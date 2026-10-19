@@ -7,6 +7,14 @@ type Page = 'records' | 'form' | 'detail'
 type SelectField = 'nature' | 'type' | 'destination' | 'overnight'
 type DateField = 'start' | 'end'
 
+type AuditStep = {
+  time?: string
+  title: string
+  result?: string
+  reviewer?: string
+  opinion?: string
+}
+
 type LeaveRecord = {
   id: string
   applicationNumber: string
@@ -23,6 +31,14 @@ type LeaveRecord = {
   proofName: string
   submittedAt: string
   status: string
+  studentNumber: string
+  wid: string
+  auditStatus: string
+  proofCount: string
+  destinationRegion: string
+  parentAttachmentName: string
+  parentAttachmentSize: string
+  auditSteps: AuditStep[]
 }
 
 type LeaveForm = {
@@ -43,20 +59,35 @@ const STORAGE_KEY = 'leave-web-local-records'
 const initialRecords: LeaveRecord[] = [
   {
     id: 'sample-1',
-    applicationNumber: 'SQ202610090001',
-    nature: '事假',
-    type: '因私',
+    applicationNumber: 'LOCAL-20261009-0001',
+    nature: '因私请假',
+    type: '事假',
     reason: '个人事务',
     start: '2026-10-09T08:00',
-    end: '2026-10-09T18:00',
-    days: 1,
-    destination: '校外',
-    address: '校外实习单位',
-    overnight: '否',
+    end: '2026-10-10T18:00',
+    days: 2,
+    destination: '离开本市不离开本省',
+    address: '本地示例地址',
+    overnight: '是',
     phone: '138****0000',
-    proofName: '',
+    proofName: 'proof-example.jpg',
     submittedAt: '2026-10-08T16:30',
     status: '已销假',
+    studentNumber: '2023LOCAL001',
+    wid: 'LOCAL-WID-0001',
+    auditStatus: '已通过',
+    proofCount: '1/0',
+    destinationRegion: '示例省/示例市/示例区',
+    parentAttachmentName: 'parent-consent-example.jpg',
+    parentAttachmentSize: '256KB',
+    auditSteps: [
+      { time: '2026-10-08 16:30', title: '提交申请' },
+      { time: '2026-10-08 17:20', title: '辅导员审核', result: '通过', reviewer: 'LOCAL-001-示例审核人', opinion: '同意' },
+      { title: '院系审核' },
+      { title: '学校审核' },
+      { title: '校领导审核' },
+      { title: '结束' },
+    ],
   },
 ]
 
@@ -75,9 +106,9 @@ const initialForm: LeaveForm = {
 }
 
 const options: Record<SelectField, string[]> = {
-  nature: ['事假', '病假', '公假'],
-  type: ['因私', '其他'],
-  destination: ['校内', '校外'],
+  nature: ['因私请假', '因病请假', '公假'],
+  type: ['事假', '病假', '其他'],
+  destination: ['离开本市不离开本省', '离开本省', '校内'],
   overnight: ['是', '否'],
 }
 
@@ -93,9 +124,46 @@ function readRecords(): LeaveRecord[] {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (!saved) return initialRecords
     const parsed = JSON.parse(saved)
-    return Array.isArray(parsed) ? parsed : initialRecords
+    return Array.isArray(parsed) ? parsed.map(normalizeRecord) : initialRecords
   } catch {
     return initialRecords
+  }
+}
+
+function normalizeRecord(record: Partial<LeaveRecord>): LeaveRecord {
+  const start = record.start ?? ''
+  const end = record.end ?? ''
+  return {
+    id: record.id ?? crypto.randomUUID(),
+    applicationNumber: record.applicationNumber ?? 'LOCAL-UNKNOWN',
+    nature: record.nature ?? '因私请假',
+    type: record.type ?? '事假',
+    reason: record.reason ?? '',
+    start,
+    end,
+    days: record.days ?? calculateDays(start, end),
+    destination: record.destination ?? '',
+    address: record.address ?? '',
+    overnight: record.overnight ?? '',
+    phone: record.phone ?? '',
+    proofName: record.proofName ?? '',
+    submittedAt: record.submittedAt ?? start,
+    status: record.status ?? '审核中',
+    studentNumber: record.studentNumber ?? '2023LOCAL000',
+    wid: record.wid ?? `LOCAL-WID-${(record.id ?? 'NEW').slice(0, 8).toUpperCase()}`,
+    auditStatus: record.auditStatus ?? record.status ?? '审核中',
+    proofCount: record.proofCount ?? (record.proofName ? '1/0' : '0/0'),
+    destinationRegion: record.destinationRegion ?? '示例省/示例市/示例区',
+    parentAttachmentName: record.parentAttachmentName ?? '',
+    parentAttachmentSize: record.parentAttachmentSize ?? '',
+    auditSteps: record.auditSteps ?? [
+      { time: record.submittedAt, title: '提交申请' },
+      { title: '辅导员审核' },
+      { title: '院系审核' },
+      { title: '学校审核' },
+      { title: '校领导审核' },
+      { title: '结束' },
+    ],
   }
 }
 
@@ -103,7 +171,11 @@ function saveRecords(records: LeaveRecord[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(records))
 }
 
-function formatDate(value: string) {
+function dateOnly(value: string) {
+  return value ? value.slice(0, 10) : '未设置'
+}
+
+function formatDateTime(value: string) {
   if (!value) return '未设置'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
@@ -127,7 +199,7 @@ function getRoute(): { page: Page; recordId: string | null } {
 }
 
 function createApplicationNumber() {
-  return `SQ${new Date().toISOString().slice(0, 10).replaceAll('-', '')}${crypto.randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()}`
+  return `LOCAL-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${crypto.randomUUID().replaceAll('-', '').slice(0, 4).toUpperCase()}`
 }
 
 function calculateDays(start: string, end: string) {
@@ -207,8 +279,10 @@ function App() {
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault()
     if (!validate()) return
+    const id = crypto.randomUUID()
+    const submittedAt = new Date().toISOString().slice(0, 16)
     const record: LeaveRecord = {
-      id: crypto.randomUUID(),
+      id,
       applicationNumber: createApplicationNumber(),
       nature: form.nature,
       type: form.type,
@@ -221,8 +295,23 @@ function App() {
       overnight: form.overnight,
       phone: form.phone.trim(),
       proofName: form.proofName,
-      submittedAt: new Date().toISOString().slice(0, 16),
+      submittedAt,
       status: '审核中',
+      studentNumber: '2023LOCAL000',
+      wid: `LOCAL-WID-${id.slice(0, 8).toUpperCase()}`,
+      auditStatus: '审核中',
+      proofCount: form.proofName ? '1/0' : '0/0',
+      destinationRegion: '示例省/示例市/示例区',
+      parentAttachmentName: '',
+      parentAttachmentSize: '',
+      auditSteps: [
+        { time: formatDateTime(submittedAt), title: '提交申请' },
+        { title: '辅导员审核' },
+        { title: '院系审核' },
+        { title: '学校审核' },
+        { title: '校领导审核' },
+        { title: '结束' },
+      ],
     }
     const next = [record, ...records]
     saveRecords(next)
@@ -300,13 +389,13 @@ function RecordList({
       ) : (
         <div className="record-list">
           {records.map((record) => (
-            <button className="record-card record-open" type="button" key={record.id} onClick={() => onOpenDetail(record)} aria-label={`查看${record.nature}详情`}>
+            <button className="record-card record-open" type="button" key={record.id} onClick={() => onOpenDetail(record)} aria-label={`查看${record.type}详情`}>
               <div className="record-card-head">
-                <strong>{record.nature}</strong>
+                <strong>{record.type}</strong>
                 <span className="status-badge">{record.status}</span>
               </div>
-              <div className="record-row"><span>请假类型</span><b>{record.type}</b></div>
-              <div className="record-row"><span>请假时间</span><b>{formatDate(record.start)} - {formatDate(record.end)}</b></div>
+              <div className="record-row"><span>请假性质</span><b>{record.nature}</b></div>
+              <div className="record-row"><span>请假日期</span><b>{dateOnly(record.start)} 至 {dateOnly(record.end)}</b></div>
               <div className="record-row"><span>请假天数</span><b>{record.days} 天</b></div>
               <div className="record-row"><span>请假事由</span><b>{record.reason}</b></div>
               <div className="record-detail-link">查看详细数据 <ChevronRight aria-hidden="true" size={16} /></div>
@@ -339,35 +428,56 @@ function LeaveDetail({ record, onBack }: { record?: LeaveRecord; onBack: () => v
   return (
     <section className="detail-page">
       <DetailNav onBack={onBack} />
-      <div className="detail-status-card">
-        <span>当前状态</span>
-        <strong>{record.status}</strong>
-        <small>申请编号：{record.applicationNumber}</small>
-      </div>
-      <DetailSection title="申请信息">
-        <DetailRow label="申请编号" value={record.applicationNumber} />
-        <DetailRow label="提交时间" value={formatDate(record.submittedAt)} />
-        <DetailRow label="手机号" value={record.phone || '未填写'} />
-        <DetailRow label="证明材料" value={record.proofName || '未上传'} />
-      </DetailSection>
-      <DetailSection title="请假信息">
+      <div className="detail-status">{record.status}</div>
+      <div className="detail-form">
         <DetailRow label="请假性质" value={record.nature} />
         <DetailRow label="请假类型" value={record.type} />
-        <DetailRow label="请假天数" value={`${record.days} 天`} />
-        <DetailRow label="开始时间" value={formatDate(record.start)} />
-        <DetailRow label="结束时间" value={formatDate(record.end)} />
-        <DetailRow label="请假去向" value={record.destination} />
-        <DetailRow label="具体地址" value={record.address || '未填写'} />
-        <DetailRow label="校外过夜" value={record.overnight || '未填写'} />
+        <DetailRow label="请假日期" value={`${dateOnly(record.start)} 至 ${dateOnly(record.end)}`} />
+        <DetailRow label="请假开始日期" value={dateOnly(record.start)} />
+        <DetailRow label="请假结束日期" value={dateOnly(record.end)} />
+        <DetailRow label="请假天数" value={String(record.days)} />
         <DetailRow label="请假事由" value={record.reason} multiline />
-      </DetailSection>
-      <DetailSection title="审核信息">
-        <DetailRow label="审核状态" value={record.status} />
-        <div className="detail-audit-note">
-          <FileText aria-hidden="true" size={19} />
-          <span>申请已保存在当前浏览器，模拟状态为“{record.status}”。</span>
+        <DetailRow label="学生编号" value={record.studentNumber} />
+        <DetailRow label="WID" value={record.wid} />
+        <DetailRow label="申请编号" value={record.applicationNumber} />
+        <DetailRow label="审核状态" value={record.auditStatus} />
+        <DetailRow label="证明材料" value={record.proofCount} />
+        <DetailRow label="手机号" value={record.phone || '未填写'} />
+        <DetailRow label="请假开始时间" value={formatDateTime(record.start)} />
+        <DetailRow label="请假结束时间" value={formatDateTime(record.end)} />
+        <DetailRow label="请假去向" value={record.destination} />
+        <DetailRow label="去向地区" value={record.destinationRegion} />
+        <DetailRow label="请假去向(具体地址)" value={record.address || '未填写'} multiline />
+        <DetailRow label="是否在校外过夜" value={record.overnight} />
+        <div className="attachment-block">
+          <div className="attachment-title">家长知情同意佐证材料 ({record.parentAttachmentName ? '1/1' : '0/0'})</div>
+          {record.parentAttachmentName ? (
+            <div className="attachment-file">
+              <FileText aria-hidden="true" size={34} strokeWidth={1.3} />
+              <div>
+                <div className="attachment-name">{record.parentAttachmentName}</div>
+                <div className="attachment-size">{record.parentAttachmentSize || '未知大小'}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="attachment-empty">未上传</div>
+          )}
         </div>
-      </DetailSection>
+      </div>
+      <div className="audit-section">
+        <div className="audit-title">审核流程</div>
+        <div className="audit-list">
+          {record.auditSteps.map((step, index) => (
+            <div className={`audit-step ${step.result ? 'completed' : ''}`} key={`${step.title}-${index}`}>
+              {step.time && <div className="audit-time">{step.time}</div>}
+              <div className="audit-step-title">{step.title}</div>
+              {step.result && <div className="audit-result">{step.result}</div>}
+              {step.reviewer && <div className="audit-meta">审核人：{step.reviewer}</div>}
+              {step.opinion && <div className="audit-meta">审核意见：{step.opinion}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
   )
 }
@@ -381,15 +491,6 @@ function DetailNav({ onBack }: { onBack: () => void }) {
       <strong>请假详情</strong>
       <span />
     </div>
-  )
-}
-
-function DetailSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="detail-section">
-      <div className="detail-section-title">{title}</div>
-      <div className="detail-section-body">{children}</div>
-    </section>
   )
 }
 
@@ -454,8 +555,8 @@ function LeaveFormPage({
       <DateCell label="请假开始时间" value={form.start} error={errors.start} onChange={(value) => onDateChange('start', value)} />
       <DateCell label="请假结束时间" value={form.end} error={errors.end} onChange={(value) => onDateChange('end', value)} />
       <SelectCell label="请假去向" value={form.destination} required error={errors.destination} onClick={() => onOpenSelect('destination')} />
-      <FieldCell id="address" label="请假去向（具体地址）" required error={errors.address}>
-        <input id="address" value={form.address} onChange={(event) => onChange('address', event.target.value)} placeholder="请输入请假去向（具体地址）" />
+      <FieldCell id="address" label="请假去向(具体地址)" required error={errors.address}>
+        <input id="address" value={form.address} onChange={(event) => onChange('address', event.target.value)} placeholder="请输入请假去向(具体地址)" />
       </FieldCell>
       <SelectCell label="是否在校外过夜" value={form.overnight} required error={errors.overnight} onClick={() => onOpenSelect('overnight')} />
       <button className="submit-button" type="submit">提交</button>
@@ -575,7 +676,3 @@ function SelectSheet({
 }
 
 export default App
-
-
-
-
