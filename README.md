@@ -2,6 +2,10 @@
 
 这是一个移动端优先的 React + TypeScript + Vite 网站，用于本地模拟学生请假记录和新建请假流程。
 
+## 在线访问
+
+GitHub Pages 地址：https://fritoy530.github.io/leave-web-local/
+
 ## 运行
 
 ```powershell
@@ -31,3 +35,4 @@ npm run test:e2e
 ```
 
 视觉参数、范围和验收标准见 `docs/superpowers/specs/2026-10-19-leave-local-design.md`。
+
