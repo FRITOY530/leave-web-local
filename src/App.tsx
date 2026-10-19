@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
-import { ArrowLeft, Camera, ChevronRight, ClipboardList, FileText, Plus } from 'lucide-react'
+import { Camera, Check, ChevronRight, ClipboardList, Plus } from 'lucide-react'
+import proofPreview from './assets/proof-preview.svg'
 import './App.css'
 
 type Page = 'records' | 'form' | 'detail'
@@ -415,94 +416,148 @@ function LeaveDetail({ record, onBack }: { record?: LeaveRecord; onBack: () => v
   if (!record) {
     return (
       <section className="detail-page">
-        <DetailNav onBack={onBack} />
         <div className="empty-state">
           <ClipboardList aria-hidden="true" size={48} strokeWidth={1.5} />
           <p>未找到请假详情</p>
           <span>该记录可能已经被清空</span>
+          <button className="detail-fallback-back" type="button" onClick={onBack}>返回请假记录</button>
         </div>
       </section>
     )
   }
 
   return (
-    <section className="detail-page">
-      <DetailNav onBack={onBack} />
-      <div className="detail-status">{record.status}</div>
-      <div className="detail-form">
-        <DetailRow label="请假性质" value={record.nature} />
-        <DetailRow label="请假类型" value={record.type} />
-        <DetailRow label="请假日期" value={`${dateOnly(record.start)} 至 ${dateOnly(record.end)}`} />
-        <DetailRow label="请假开始日期" value={dateOnly(record.start)} />
-        <DetailRow label="请假结束日期" value={dateOnly(record.end)} />
-        <DetailRow label="请假天数" value={String(record.days)} />
-        <DetailRow label="请假事由" value={record.reason} multiline />
-        <DetailRow label="学生编号" value={record.studentNumber} />
-        <DetailRow label="WID" value={record.wid} />
-        <DetailRow label="申请编号" value={record.applicationNumber} />
-        <DetailRow label="审核状态" value={record.auditStatus} />
-        <DetailRow label="证明材料" value={record.proofCount} />
-        <DetailRow label="手机号" value={record.phone || '未填写'} />
-        <DetailRow label="请假开始时间" value={formatDateTime(record.start)} />
-        <DetailRow label="请假结束时间" value={formatDateTime(record.end)} />
-        <DetailRow label="请假去向" value={record.destination} />
-        <DetailRow label="去向地区" value={record.destinationRegion} />
-        <DetailRow label="请假去向(具体地址)" value={record.address || '未填写'} multiline />
-        <DetailRow label="是否在校外过夜" value={record.overnight} />
-        <div className="attachment-block">
-          <div className="attachment-title">家长知情同意佐证材料 ({record.parentAttachmentName ? '1/1' : '0/0'})</div>
-          {record.parentAttachmentName ? (
-            <div className="attachment-file">
-              <FileText aria-hidden="true" size={34} strokeWidth={1.3} />
-              <div>
-                <div className="attachment-name">{record.parentAttachmentName}</div>
-                <div className="attachment-size">{record.parentAttachmentSize || '未知大小'}</div>
+    <section className="detail-page reference-detail">
+      <div className="mint-layout-container sfxj-class">
+        <span className="status-ok-icon" aria-hidden="true"><Check size={17} strokeWidth={3} /></span>
+        <span id="sfxj">{record.status}</span>
+      </div>
+
+      <div className="emapm-form emapm-form-readonly">
+        <div className="mint-cell-group mt-bg-lv2">
+          <div className="mint-cell-group-content mint-hairline--top-bottom mt-bg-white">
+            <DetailRow label="请假性质" value={record.nature} />
+            <DetailRow label="请假类型" value={record.type} />
+            <DetailRow className="reference-hidden" label="请假日期" value={`${dateOnly(record.start)} 至 ${dateOnly(record.end)}`} />
+            <DetailRow className="reference-hidden" label="请假开始日期" value={dateOnly(record.start)} />
+            <DetailRow className="reference-hidden" label="请假结束日期" value={dateOnly(record.end)} />
+            <DetailRow label="请假天数" value={String(record.days)} />
+            <DetailRow className="reason-row" label="请假事由" value={record.reason} />
+            <DetailRow className="reference-hidden" label="学生编号" value={record.studentNumber} />
+            <DetailRow className="reference-hidden" label="WID" value={record.wid} />
+            <DetailRow className="reference-hidden" label="申请编号" value={record.applicationNumber} />
+            <DetailRow className="reference-hidden" label="审核状态" value={record.auditStatus} />
+
+            <div className="emapm-item bh-upload-wrap emapm-uploa-imgs">
+              <div className="mint-cell mt-bg-white mint-uploadimgs is-vertical">
+                <div className="mint-cell-wrapper">
+                  <div className="mint-cell-title"><span className="mint-cell-text">证明材料</span></div>
+                  <div className="mint-cell-value"><span /></div>
+                </div>
+              </div>
+              {record.proofName && (
+                <div className="upload_item">
+                  <img className="upload_img" src={proofPreview} alt="" />
+                </div>
+              )}
+            </div>
+
+            <DetailRow label="手机号" value={record.phone || '未填写'} />
+            <DetailRow label="请假开始时间" value={formatDateTime(record.start)} />
+            <DetailRow label="请假结束时间" value={formatDateTime(record.end)} />
+            <DetailRow label="请假去向" value={record.destination} />
+            <DetailRow label="去向地区" value={record.destinationRegion} />
+            <DetailRow label="请假去向(具体地址)" value={record.address || '未填写'} />
+            <DetailRow label="是否在校外过夜" value={record.overnight} />
+
+            <div className="emapm-item parent-material-item">
+              <div className="__em-attachment-list">
+                <p className="__em-attachment-list-title">
+                  家长知情同意佐证材料 ({record.parentAttachmentName ? '1/1' : '0/0'})
+                </p>
+                {record.parentAttachmentName ? (
+                  <div className="mint-cell mt-bg-white">
+                    <div className="mint-cell-wrapper">
+                      <div className="mint-cell-title parent-file-title">
+                        <img className="__em-img-icon" src={proofPreview} alt="" />
+                        <div className="__em-file-info">
+                          <p className="__em-file-info_name">{record.parentAttachmentName}</p>
+                          <p className="__em-file-info_size"><span>{record.parentAttachmentSize || '未知大小'}</span></p>
+                        </div>
+                      </div>
+                      <div className="mint-cell-value" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="attachment-empty">未上传</div>
+                )}
               </div>
             </div>
-          ) : (
-            <div className="attachment-empty">未上传</div>
-          )}
+          </div>
         </div>
       </div>
-      <div className="audit-section">
-        <div className="audit-title">审核流程</div>
-        <div className="audit-list">
-          {record.auditSteps.map((step, index) => (
-            <div className={`audit-step ${step.result ? 'completed' : ''}`} key={`${step.title}-${index}`}>
-              {step.time && <div className="audit-time">{step.time}</div>}
-              <div className="audit-step-title">{step.title}</div>
-              {step.result && <div className="audit-result">{step.result}</div>}
-              {step.reviewer && <div className="audit-meta">审核人：{step.reviewer}</div>}
-              {step.opinion && <div className="audit-meta">审核意见：{step.opinion}</div>}
+
+      <div className="mint-hr" />
+      <div className="mint-layout-spacing detail-spacing" />
+
+      <div className="mint-layout-container bh-bg-color-light audit-container">
+        <div className="mint-hr" />
+        <div className="mint-layout-container audit-header">
+          <div className="mint-layout-lr">
+            <div className="mint-layout-lr-item mint-layout-container">
+              <div className="mint-text">审核流程</div>
             </div>
-          ))}
+          </div>
+        </div>
+        <div className="mint-hr audit-inner-hr" />
+        <div className="mint-steps mint-steps--vertical">
+          <div className="mint-steps__items mint-steps__items--alone">
+            {record.auditSteps.map((step, index) => (
+              <div className={`mint-step mint-step--vertical mint-step--finish ${step.result ? 'has-result' : ''}`} key={`${step.title}-${index}`}>
+                <div className="mint-step__circle-container"><Check className="mint-step__icon" size={23} strokeWidth={1.8} /></div>
+                <div className="mint-step__line" />
+                <div className={`mint-step__time ${index === record.auditSteps.length - 1 ? '' : 'has-slot'}`}>
+                  {index > 0 && <div className="mint-step__time-spacer" />}
+                  {step.time && <div className="mint-step__time-text">{step.time}</div>}
+                </div>
+                <div className="mint-step__title">
+                  <div className="mint-step__name">{step.title}</div>
+                  {step.result && <div className="mint-step__detail">{step.result}</div>}
+                  {step.reviewer && <div className="mint-step__detail">审核人：{step.reviewer}</div>}
+                  {step.opinion && <pre className="mint-step__detail">审核意见：{step.opinion}</pre>}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+
+      <div className="mint-layout-spacing detail-spacing" />
+      <div className="mint-layout-spacing detail-spacing" />
     </section>
   )
 }
 
-function DetailNav({ onBack }: { onBack: () => void }) {
+function DetailRow({
+  label,
+  value,
+  className = '',
+}: {
+  label: string
+  value: string
+  className?: string
+}) {
   return (
-    <div className="detail-nav">
-      <button type="button" onClick={onBack} aria-label="返回请假记录">
-        <ArrowLeft aria-hidden="true" size={23} />
-      </button>
-      <strong>请假详情</strong>
-      <span />
+    <div className={`emapm-item ${className}`.trim()}>
+      <div className="mint-cell mt-bg-white">
+        <div className="mint-cell-wrapper">
+          <div className="mint-cell-title"><span className="mint-cell-text">{label}</span></div>
+          <div className="mint-cell-value"><div className="em-select-value">{value}</div></div>
+        </div>
+      </div>
     </div>
   )
 }
-
-function DetailRow({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
-  return (
-    <div className={`detail-row ${multiline ? 'multiline' : ''}`}>
-      <span>{label}</span>
-      <b>{value}</b>
-    </div>
-  )
-}
-
 function LeaveFormPage({
   form,
   errors,

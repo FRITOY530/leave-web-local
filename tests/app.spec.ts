@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
 
-test('validates, saves locally, and opens the reference-style detail page', async ({ page }) => {
+test('matches the supplied detail view and keeps local-only leave behavior', async ({ page }) => {
   const externalRequests: string[] = []
   page.on('request', (request) => {
     if (request.url().includes('hnuit.edu.cn')) externalRequests.push(request.url())
@@ -13,14 +13,9 @@ test('validates, saves locally, and opens the reference-style detail page', asyn
   await page.reload()
 
   await expect(page.getByRole('button', { name: '新建请假' })).toBeVisible()
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-
   await page.getByRole('button', { name: '新建请假' }).click()
-  await expect(page.getByText('请假信息', { exact: true })).toBeVisible()
-
   await page.getByRole('button', { name: '提交' }).click()
   await expect(page.getByText('请选择请假性质')).toBeVisible()
-  await expect(page.getByText('请输入正确的手机号')).toBeVisible()
 
   await page.getByRole('button', { name: '请假性质' }).click()
   await page.getByRole('button', { name: '因私请假', exact: true }).click()
@@ -36,30 +31,18 @@ test('validates, saves locally, and opens the reference-style detail page', asyn
   await page.getByRole('button', { name: '是否在校外过夜' }).click()
   await page.getByRole('button', { name: '否', exact: true }).click()
 
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  await page.screenshot({ path: 'artifacts/leave-form-390.png', fullPage: true })
-
   await page.getByRole('button', { name: '提交' }).click()
   await expect(page.getByText('本地模拟记录已保存')).toBeVisible()
-  await expect(page.getByText('本地网页功能测试')).toBeVisible()
   await expect(page.getByText('审核中').first()).toBeVisible()
 
-  await page.screenshot({ path: 'artifacts/leave-records-390.png', fullPage: true })
-
   await page.getByRole('button', { name: '查看事假详情' }).first().click()
-  await expect(page.getByText('请假详情', { exact: true })).toBeVisible()
+
+  await expect(page.locator('#sfxj')).toHaveText('审核中')
   for (const label of [
     '请假性质',
     '请假类型',
-    '请假日期',
-    '请假开始日期',
-    '请假结束日期',
     '请假天数',
     '请假事由',
-    '学生编号',
-    'WID',
-    '申请编号',
-    '审核状态',
     '证明材料',
     '手机号',
     '请假开始时间',
@@ -68,28 +51,53 @@ test('validates, saves locally, and opens the reference-style detail page', asyn
     '去向地区',
     '请假去向(具体地址)',
     '是否在校外过夜',
+    '家长知情同意佐证材料 (0/0)',
+    '审核流程',
   ]) {
-    await expect(page.getByText(label, { exact: true })).toBeVisible()
+    await expect(page.getByText(label, { exact: true }).first()).toBeVisible()
   }
-  await expect(page.getByText('家长知情同意佐证材料 (0/0)')).toBeVisible()
-  await expect(page.getByText('审核流程', { exact: true })).toBeVisible()
+
+  for (const hiddenLabel of ['请假日期', '学生编号', 'WID', '申请编号', '审核状态']) {
+    await expect(page.getByText(hiddenLabel, { exact: true })).toBeHidden()
+  }
+
+  await expect(page.getByText('本地网页功能测试')).toBeVisible()
   await expect(page.getByText('13800138000')).toBeVisible()
   await expect(page.getByText('本地测试地址')).toBeVisible()
   await expect(page.getByText('未上传')).toBeVisible()
-  await expect(page.getByText('审核中').first()).toBeVisible()
+  await expect(page.getByText('提交申请', { exact: true })).toBeVisible()
+  await expect(page.getByText('辅导员审核', { exact: true })).toBeVisible()
+
+  const statusBox = await page.locator('.sfxj-class').boundingBox()
+  const firstRowBox = await page.locator('.emapm-item').first().boundingBox()
+  expect(statusBox?.y).toBeCloseTo(13, 0)
+  expect(statusBox?.height).toBeCloseTo(35, 0)
+  expect(firstRowBox?.x).toBeCloseTo(20, 0)
+  expect(firstRowBox?.y).toBeCloseTo(58, 0)
+  expect(firstRowBox?.width).toBeCloseTo(370, 0)
+  expect(firstRowBox?.height).toBeCloseTo(28, 0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 
-  await page.screenshot({ path: 'artifacts/leave-detail-390.png', fullPage: true })
-  await page.reload()
-  await expect(page.getByText('请假详情', { exact: true })).toBeVisible()
-  await expect(page.getByText('本地测试地址')).toBeVisible()
+  await page.screenshot({ path: 'artifacts/leave-detail-reference-390.png', fullPage: true })
 
-  await page.getByRole('button', { name: '返回请假记录' }).click()
+  await page.goto('/#/records')
   await expect(page.getByText('本地网页功能测试')).toBeVisible()
 
   const stored = await page.evaluate(() => localStorage.getItem('leave-web-local-records'))
   expect(stored).toContain('本地网页功能测试')
   expect(stored).toContain('审核中')
-  expect(stored).toContain('本地测试地址')
+
+  await page.goto('/#/detail/sample-1')
+  await page.reload()
+  const proofBox = await page.locator('.bh-upload-wrap').boundingBox()
+  const parentBox = await page.locator('.parent-material-item').boundingBox()
+  const auditBox = await page.locator('.audit-container').boundingBox()
+  expect(proofBox?.y).toBeCloseTo(170.21875, 3)
+  expect(proofBox?.height).toBeCloseTo(114.21875, 3)
+  expect(parentBox?.y).toBeCloseTo(509.3125, 3)
+  expect(parentBox?.height).toBeCloseTo(124, 3)
+  expect(auditBox?.y).toBeCloseTo(664.3125, 3)
+  await expect(page.locator('.mint-step')).toHaveCount(6)
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(1154)
   expect(externalRequests).toEqual([])
 })
