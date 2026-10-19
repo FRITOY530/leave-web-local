@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
-import { Camera, ChevronRight, ClipboardList, Plus } from 'lucide-react'
+import { ArrowLeft, Camera, ChevronRight, ClipboardList, FileText, Plus } from 'lucide-react'
 import './App.css'
 
-type Page = 'records' | 'form'
+type Page = 'records' | 'form' | 'detail'
 type SelectField = 'nature' | 'type' | 'destination' | 'overnight'
 type DateField = 'start' | 'end'
 
 type LeaveRecord = {
   id: string
+  applicationNumber: string
   nature: string
   type: string
   reason: string
@@ -16,6 +17,11 @@ type LeaveRecord = {
   end: string
   days: number
   destination: string
+  address: string
+  overnight: string
+  phone: string
+  proofName: string
+  submittedAt: string
   status: string
 }
 
@@ -37,6 +43,7 @@ const STORAGE_KEY = 'leave-web-local-records'
 const initialRecords: LeaveRecord[] = [
   {
     id: 'sample-1',
+    applicationNumber: 'SQ202610090001',
     nature: '事假',
     type: '因私',
     reason: '个人事务',
@@ -44,6 +51,11 @@ const initialRecords: LeaveRecord[] = [
     end: '2026-10-09T18:00',
     days: 1,
     destination: '校外',
+    address: '校外实习单位',
+    overnight: '否',
+    phone: '138****0000',
+    proofName: '',
+    submittedAt: '2026-10-08T16:30',
     status: '已销假',
   },
 ]
@@ -105,6 +117,19 @@ function formatDate(value: string) {
   }).replaceAll('/', '-')
 }
 
+function getRoute(): { page: Page; recordId: string | null } {
+  const hash = window.location.hash
+  if (hash === '#/new') return { page: 'form', recordId: null }
+  if (hash.startsWith('#/detail/')) {
+    return { page: 'detail', recordId: decodeURIComponent(hash.slice('#/detail/'.length)) }
+  }
+  return { page: 'records', recordId: null }
+}
+
+function createApplicationNumber() {
+  return `SQ${new Date().toISOString().slice(0, 10).replaceAll('-', '')}${crypto.randomUUID().replaceAll('-', '').slice(0, 6).toUpperCase()}`
+}
+
 function calculateDays(start: string, end: string) {
   if (!start || !end) return 0
   const diff = new Date(end).getTime() - new Date(start).getTime()
@@ -113,7 +138,9 @@ function calculateDays(start: string, end: string) {
 }
 
 function App() {
-  const [page, setPage] = useState<Page>(() => window.location.hash === '#/new' ? 'form' : 'records')
+  const initialRoute = getRoute()
+  const [page, setPage] = useState<Page>(initialRoute.page)
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(initialRoute.recordId)
   const [records, setRecords] = useState<LeaveRecord[]>(readRecords)
   const [form, setForm] = useState<LeaveForm>(initialForm)
   const [errors, setErrors] = useState<Partial<Record<keyof LeaveForm, string>>>({})
@@ -121,8 +148,13 @@ function App() {
   const [savedMessage, setSavedMessage] = useState('')
 
   useEffect(() => {
-    window.history.replaceState(null, '', page === 'form' ? '#/new' : '#/records')
-  }, [page])
+    const nextHash = page === 'form'
+      ? '#/new'
+      : page === 'detail' && selectedRecordId
+        ? `#/detail/${encodeURIComponent(selectedRecordId)}`
+        : '#/records'
+    window.history.replaceState(null, '', nextHash)
+  }, [page, selectedRecordId])
 
   const updateForm = (key: keyof LeaveForm, value: string) => {
     setForm((current) => ({ ...current, [key]: value }))
@@ -136,6 +168,17 @@ function App() {
       return { ...next, days: days ? String(days) : '' }
     })
     setErrors((current) => ({ ...current, [key]: undefined }))
+  }
+
+  const openDetail = (record: LeaveRecord) => {
+    setSavedMessage('')
+    setSelectedRecordId(record.id)
+    setPage('detail')
+  }
+
+  const closeDetail = () => {
+    setSelectedRecordId(null)
+    setPage('records')
   }
 
   const openForm = () => {
@@ -166,6 +209,7 @@ function App() {
     if (!validate()) return
     const record: LeaveRecord = {
       id: crypto.randomUUID(),
+      applicationNumber: createApplicationNumber(),
       nature: form.nature,
       type: form.type,
       reason: form.reason.trim(),
@@ -173,7 +217,12 @@ function App() {
       end: form.end,
       days: calculateDays(form.start, form.end),
       destination: form.destination,
-      status: '待审批',
+      address: form.address.trim(),
+      overnight: form.overnight,
+      phone: form.phone.trim(),
+      proofName: form.proofName,
+      submittedAt: new Date().toISOString().slice(0, 16),
+      status: '审核中',
     }
     const next = [record, ...records]
     saveRecords(next)
@@ -192,7 +241,12 @@ function App() {
   return (
     <main className="app-shell">
       {page === 'records' ? (
-        <RecordList records={records} message={savedMessage} onCreate={openForm} onClear={clearRecords} />
+        <RecordList records={records} message={savedMessage} onCreate={openForm} onClear={clearRecords} onOpenDetail={openDetail} />
+      ) : page === 'detail' ? (
+        <LeaveDetail
+          record={records.find((record) => record.id === selectedRecordId || record.applicationNumber === selectedRecordId)}
+          onBack={closeDetail}
+        />
       ) : (
         <LeaveFormPage
           form={form}
@@ -219,11 +273,13 @@ function RecordList({
   message,
   onCreate,
   onClear,
+  onOpenDetail,
 }: {
   records: LeaveRecord[]
   message: string
   onCreate: () => void
   onClear: () => void
+  onOpenDetail: (record: LeaveRecord) => void
 }) {
   return (
     <section className="records-page">
@@ -244,7 +300,7 @@ function RecordList({
       ) : (
         <div className="record-list">
           {records.map((record) => (
-            <article className="record-card" key={record.id}>
+            <button className="record-card record-open" type="button" key={record.id} onClick={() => onOpenDetail(record)} aria-label={`查看${record.nature}详情`}>
               <div className="record-card-head">
                 <strong>{record.nature}</strong>
                 <span className="status-badge">{record.status}</span>
@@ -253,7 +309,8 @@ function RecordList({
               <div className="record-row"><span>请假时间</span><b>{formatDate(record.start)} - {formatDate(record.end)}</b></div>
               <div className="record-row"><span>请假天数</span><b>{record.days} 天</b></div>
               <div className="record-row"><span>请假事由</span><b>{record.reason}</b></div>
-            </article>
+              <div className="record-detail-link">查看详细数据 <ChevronRight aria-hidden="true" size={16} /></div>
+            </button>
           ))}
           <div className="no-more">没有更多啦</div>
         </div>
@@ -262,6 +319,86 @@ function RecordList({
         <Plus aria-hidden="true" size={32} strokeWidth={1.8} />
       </button>
     </section>
+  )
+}
+
+function LeaveDetail({ record, onBack }: { record?: LeaveRecord; onBack: () => void }) {
+  if (!record) {
+    return (
+      <section className="detail-page">
+        <DetailNav onBack={onBack} />
+        <div className="empty-state">
+          <ClipboardList aria-hidden="true" size={48} strokeWidth={1.5} />
+          <p>未找到请假详情</p>
+          <span>该记录可能已经被清空</span>
+        </div>
+      </section>
+    )
+  }
+
+  return (
+    <section className="detail-page">
+      <DetailNav onBack={onBack} />
+      <div className="detail-status-card">
+        <span>当前状态</span>
+        <strong>{record.status}</strong>
+        <small>申请编号：{record.applicationNumber}</small>
+      </div>
+      <DetailSection title="申请信息">
+        <DetailRow label="申请编号" value={record.applicationNumber} />
+        <DetailRow label="提交时间" value={formatDate(record.submittedAt)} />
+        <DetailRow label="手机号" value={record.phone || '未填写'} />
+        <DetailRow label="证明材料" value={record.proofName || '未上传'} />
+      </DetailSection>
+      <DetailSection title="请假信息">
+        <DetailRow label="请假性质" value={record.nature} />
+        <DetailRow label="请假类型" value={record.type} />
+        <DetailRow label="请假天数" value={`${record.days} 天`} />
+        <DetailRow label="开始时间" value={formatDate(record.start)} />
+        <DetailRow label="结束时间" value={formatDate(record.end)} />
+        <DetailRow label="请假去向" value={record.destination} />
+        <DetailRow label="具体地址" value={record.address || '未填写'} />
+        <DetailRow label="校外过夜" value={record.overnight || '未填写'} />
+        <DetailRow label="请假事由" value={record.reason} multiline />
+      </DetailSection>
+      <DetailSection title="审核信息">
+        <DetailRow label="审核状态" value={record.status} />
+        <div className="detail-audit-note">
+          <FileText aria-hidden="true" size={19} />
+          <span>申请已保存在当前浏览器，模拟状态为“{record.status}”。</span>
+        </div>
+      </DetailSection>
+    </section>
+  )
+}
+
+function DetailNav({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="detail-nav">
+      <button type="button" onClick={onBack} aria-label="返回请假记录">
+        <ArrowLeft aria-hidden="true" size={23} />
+      </button>
+      <strong>请假详情</strong>
+      <span />
+    </div>
+  )
+}
+
+function DetailSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="detail-section">
+      <div className="detail-section-title">{title}</div>
+      <div className="detail-section-body">{children}</div>
+    </section>
+  )
+}
+
+function DetailRow({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) {
+  return (
+    <div className={`detail-row ${multiline ? 'multiline' : ''}`}>
+      <span>{label}</span>
+      <b>{value}</b>
+    </div>
   )
 }
 

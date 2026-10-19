@@ -218,6 +218,91 @@ button { cursor: pointer; }
 }
 .sheet-option.active { color: #52bfc1; }
 
+
+.record-open {
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.record-detail-link {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  padding-top: 12px;
+  color: #62b9bb;
+  font-size: 12px;
+}
+
+.detail-page { min-height: 100vh; padding-bottom: 28px; }
+.detail-nav {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+  min-height: 50px;
+  padding: 0 10px;
+  background: #fff;
+  border-bottom: 1px solid #ececec;
+}
+.detail-nav button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #555;
+}
+.detail-nav strong { text-align: center; font-size: 17px; font-weight: 500; }
+.detail-status-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 12px 20px 14px;
+  padding: 20px;
+  border-radius: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, #55c9cb, #42b4b8);
+  box-shadow: 0 7px 18px rgba(82, 199, 202, .2);
+}
+.detail-status-card span { opacity: .85; font-size: 13px; }
+.detail-status-card strong { margin: 6px 0 10px; font-size: 23px; font-weight: 500; }
+.detail-status-card small { opacity: .9; font-size: 11px; }
+.detail-section { margin: 0 20px 14px; }
+.detail-section-title {
+  padding: 0 2px 8px;
+  color: #929292;
+  font-size: 13px;
+}
+.detail-section-body { overflow: hidden; background: #fff; border: 1px solid #e8e8e8; border-radius: 6px; }
+.detail-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  align-items: start;
+  min-height: 47px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.detail-row:last-child { border-bottom: 0; }
+.detail-row span { color: #999; }
+.detail-row b { color: #3e3e3e; font-weight: 400; overflow-wrap: anywhere; }
+.detail-row.multiline b { white-space: pre-wrap; }
+.detail-audit-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  color: #777;
+  background: #fafafa;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.detail-audit-note svg { flex: 0 0 auto; margin-top: 1px; color: #73babc; }
+
 @media (max-width: 430px) {
   .form-cell label, .upload-title { flex-basis: 145px; font-size: 15px; }
   .field-cell label { font-size: 13px; line-height: 18px; }

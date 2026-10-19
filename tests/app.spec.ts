@@ -42,12 +42,31 @@ test('validates, saves locally, and keeps the mobile layout usable', async ({ pa
   await page.getByRole('button', { name: '提交' }).click()
   await expect(page.getByText('本地模拟记录已保存')).toBeVisible()
   await expect(page.getByText('本地网页功能测试')).toBeVisible()
+  await expect(page.getByText('审核中')).toBeVisible()
 
   await page.screenshot({ path: 'artifacts/leave-records-390.png', fullPage: true })
+
+  await page.getByRole('button', { name: '查看事假详情' }).first().click()
+  await expect(page.getByText('请假详情', { exact: true })).toBeVisible()
+  await expect(page.getByText('申请信息', { exact: true })).toBeVisible()
+  await expect(page.getByText('请假信息', { exact: true })).toBeVisible()
+  await expect(page.getByText('13800138000')).toBeVisible()
+  await expect(page.getByText('本地测试地址')).toBeVisible()
+  await expect(page.getByText('未上传')).toBeVisible()
+  await expect(page.getByText('审核中').first()).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+
+  await page.screenshot({ path: 'artifacts/leave-detail-390.png', fullPage: true })
   await page.reload()
+  await expect(page.getByText('请假详情', { exact: true })).toBeVisible()
+  await expect(page.getByText('本地测试地址')).toBeVisible()
+
+  await page.getByRole('button', { name: '返回请假记录' }).click()
   await expect(page.getByText('本地网页功能测试')).toBeVisible()
 
   const stored = await page.evaluate(() => localStorage.getItem('leave-web-local-records'))
   expect(stored).toContain('本地网页功能测试')
+  expect(stored).toContain('审核中')
+  expect(stored).toContain('本地测试地址')
   expect(externalRequests).toEqual([])
 })
