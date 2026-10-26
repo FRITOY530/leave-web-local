@@ -1,0 +1,108 @@
+.reference-records {
+  position: relative;
+  min-height: 100vh;
+  padding: 0;
+  color: #1e2329;
+  background: #f9f9f9;
+  font-family: "PingFang SC", "Microsoft YaHei";
+  font-weight: 400;
+  line-height: normal;
+}
+
+.reference-record-card {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 0;
+  appearance: none;
+  color: inherit;
+  background: #fff;
+  font: inherit;
+  text-align: left;
+}
+
+.reference-record-heading {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.reference-record-half { width: 50%; }
+.reference-record-type { float: left; font-size: 17px; }
+.reference-record-status { float: right; font-size: 14px; }
+
+.reference-record-dot {
+  float: right;
+  width: 6px;
+  height: 6px;
+  margin: 7px 6px 0 0;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: #a2d06b;
+}
+
+.reference-record-dates {
+  width: 50%;
+  color: #92969c;
+  font-size: 14px;
+}
+
+.reference-record-divider {
+  height: 1px;
+  background: #e8e8e8;
+  transform: scaleY(.5);
+}
+
+.reference-record-end {
+  margin-bottom: 22px;
+  color: #92969c;
+  font-size: 12px;
+  text-align: center;
+}
+
+.reference-record-empty {
+  padding: 24px 20px;
+  color: #92969c;
+  font-size: 14px;
+  text-align: center;
+}
+
+.reference-record-add {
+  position: fixed;
+  right: 16px;
+  bottom: 20px;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  appearance: none;
+  color: #fff;
+  background: #52c7ca;
+}
+
+.reference-record-plus {
+  position: relative;
+  width: 24px;
+  height: 24px;
+}
+
+.reference-record-plus::before,
+.reference-record-plus::after {
+  position: absolute;
+  content: "";
+  background: currentColor;
+}
+
+.reference-record-plus::before { top: 11px; left: 0; width: 24px; height: 2px; }
+.reference-record-plus::after { top: 0; left: 11px; width: 2px; height: 24px; }
+
+.reference-record-card:focus-visible,
+.reference-record-add:focus-visible { outline: 2px solid #278f92; outline-offset: -2px; }

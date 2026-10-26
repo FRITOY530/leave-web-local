@@ -1,10 +1,46 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="75" height="75" viewBox="0 0 75 75">
-  <rect width="75" height="75" fill="#151b20"/>
-  <rect x="5" y="6" width="65" height="11" rx="2" fill="#26313a"/>
-  <rect x="8" y="9" width="24" height="3" rx="1.5" fill="#55c7a5"/>
-  <rect x="8" y="24" width="59" height="8" rx="2" fill="#28343d"/>
-  <rect x="8" y="36" width="42" height="5" rx="2.5" fill="#58c7a4"/>
-  <rect x="8" y="45" width="55" height="5" rx="2.5" fill="#65727b"/>
-  <rect x="8" y="54" width="49" height="5" rx="2.5" fill="#65727b"/>
-  <rect x="8" y="63" width="34" height="5" rx="2.5" fill="#4a565f"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600" preserveAspectRatio="none" role="img" aria-labelledby="title desc">
+  <title id="title">本地示例材料</title>
+  <desc id="desc">用于页面展示的虚构请假材料示例，不包含真实个人资料。</desc>
+  <rect width="400" height="600" fill="#f5f6f8"/>
+  <rect x="1" y="1" width="398" height="598" fill="#fff" stroke="#e2e4e8"/>
+  <rect width="400" height="28" fill="#3999e2"/>
+  <g font-family="Microsoft YaHei, sans-serif" font-weight="400">
+    <text x="16" y="19" fill="#fff" font-size="12">资料展示 · 本地示例</text>
+    <text x="200" y="68" text-anchor="middle" fill="#424a52" font-size="23">本地示例材料</text>
+    <text x="200" y="92" text-anchor="middle" fill="#a0a6ac" font-size="11">请假材料示例 / 仅供界面演示</text>
+
+    <rect x="18" y="114" width="364" height="30" fill="#fff5e4"/>
+    <rect x="18" y="114" width="4" height="30" fill="#eea94d"/>
+    <text x="31" y="134" fill="#c58a38" font-size="13">01　示例信息</text>
+    <g fill="#81888e" font-size="12">
+      <text x="25" y="169">材料名称</text><text x="25" y="199">材料用途</text><text x="25" y="229">数据来源</text>
+    </g>
+    <g fill="#4d555b" font-size="12">
+      <text x="118" y="169">请假材料示例</text><text x="118" y="199">本地页面布局展示</text><text x="118" y="229">虚构示例数据</text>
+    </g>
+    <g stroke="#edf0f2"><path d="M25 179H375M25 209H375M25 239H375"/></g>
+
+    <rect x="18" y="258" width="364" height="30" fill="#fff5e4"/>
+    <rect x="18" y="258" width="4" height="30" fill="#eea94d"/>
+    <text x="31" y="278" fill="#c58a38" font-size="13">02　材料内容</text>
+    <rect x="25" y="306" width="350" height="31" fill="#f6f8fa"/>
+    <g fill="none" stroke="#e4e8ed"><path d="M25 306H375V430H25ZM25 337H375M25 368H375M25 399H375M135 306V430M280 306V430"/></g>
+    <g fill="#68727b" font-size="11">
+      <text x="39" y="326">项目</text><text x="150" y="326">示例说明</text><text x="296" y="326">状态</text>
+      <text x="39" y="357">材料类别</text><text x="150" y="357">通用证明示例</text><text x="296" y="357">示例</text>
+      <text x="39" y="388">展示范围</text><text x="150" y="388">界面样式核对</text><text x="296" y="388">示例</text>
+      <text x="39" y="419">使用方式</text><text x="150" y="419">本地预览</text><text x="296" y="419">示例</text>
+    </g>
+
+    <rect x="18" y="450" width="364" height="30" fill="#fff5e4"/>
+    <rect x="18" y="450" width="4" height="30" fill="#eea94d"/>
+    <text x="31" y="470" fill="#c58a38" font-size="13">03　展示说明</text>
+    <g fill="#929aa2" font-size="11">
+      <text x="25" y="505">此图片为合成资料单，所有内容均为虚构。</text>
+      <text x="25" y="526">仅用于复刻页面中的附件缩略图及预览效果。</text>
+      <text x="25" y="547">不作为真实证明材料使用。</text>
+    </g>
+    <path d="M25 565H375" stroke="#e8ecef"/>
+    <text x="200" y="585" text-anchor="middle" fill="#b2b8be" font-size="10">LOCAL DEMO · 本地示例材料</text>
+  </g>
 </svg>

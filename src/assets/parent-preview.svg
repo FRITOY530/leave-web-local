@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="450" height="800" viewBox="0 0 450 800" preserveAspectRatio="none">
+  <rect width="450" height="800" fill="#111614"/>
+  <path d="M0 64H450M0 122H450M0 716H450" stroke="#303632" stroke-width="2"/>
+  <text x="225" y="100" fill="#e7e9e7" font-family="Microsoft YaHei,sans-serif" font-size="22" text-anchor="middle">家长知情同意（示例）</text>
+  <rect x="20" y="153" width="42" height="42" rx="5" fill="#44564b"/>
+  <rect x="76" y="153" width="255" height="86" rx="6" fill="#28332b"/>
+  <text x="91" y="187" fill="#e2e8e3" font-family="Microsoft YaHei,sans-serif" font-size="18">请假事由已知悉，</text>
+  <text x="91" y="216" fill="#e2e8e3" font-family="Microsoft YaHei,sans-serif" font-size="18">注意安全，按时返校。</text>
+  <rect x="170" y="270" width="204" height="55" rx="6" fill="#32794b"/>
+  <text x="185" y="305" fill="#e6f4e7" font-family="Microsoft YaHei,sans-serif" font-size="18">收到，谢谢。</text>
+  <rect x="388" y="270" width="42" height="42" rx="5" fill="#44564b"/>
+  <text x="225" y="630" fill="#77847a" font-family="Microsoft YaHei,sans-serif" font-size="20" text-anchor="middle">本地示例 · 非真实聊天记录</text>
+  <rect x="20" y="737" width="355" height="41" rx="6" fill="#28332b"/>
+</svg>

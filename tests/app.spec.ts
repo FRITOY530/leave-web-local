@@ -1,103 +1,144 @@
-import { mkdir } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
-test('matches the supplied detail view and keeps local-only leave behavior', async ({ page }) => {
-  const externalRequests: string[] = []
+function schoolRequests(page: Page) {
+  const requests: string[] = []
   page.on('request', (request) => {
-    if (request.url().includes('hnuit.edu.cn')) externalRequests.push(request.url())
+    if (new URL(request.url()).hostname.endsWith('hnuit.edu.cn')) requests.push(request.url())
   })
+  return requests
+}
 
-  await mkdir('artifacts', { recursive: true })
+test('homepage matches the reference layout and blocks another active leave', async ({ page }) => {
+  const requests = schoolRequests(page)
+  await page.setViewportSize({ width: 413, height: 751 })
   await page.goto('/')
-  await page.evaluate(() => localStorage.clear())
-  await page.reload()
 
-  await expect(page.getByRole('button', { name: '新建请假' })).toBeVisible()
-  await page.getByRole('button', { name: '新建请假' }).click()
-  await page.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('请选择请假性质')).toBeVisible()
+  const records = page.getByRole('button', { name: /查看事假详情/ })
+  await expect(records).toHaveCount(2)
+  await expect(records.nth(0)).toContainText('已通过')
+  await expect(records.nth(0)).toContainText('2026-10-25 至 2026-10-26 / 共1天')
+  await expect(records.nth(1)).toContainText('已销假')
+  await expect(records.nth(1)).toContainText('2026-09-29 至 2026-09-30 / 共1天')
+  await expect(page.getByText('没有更多啦~', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '清空', exact: true })).toHaveCount(0)
 
-  await page.getByRole('button', { name: '请假性质' }).click()
-  await page.getByRole('button', { name: '因私请假', exact: true }).click()
-  await page.getByRole('button', { name: '请假类型' }).click()
-  await page.getByRole('button', { name: '事假', exact: true }).click()
-  await page.getByLabel('请假事由').fill('本地网页功能测试')
-  await page.getByLabel('手机号').fill('13800138000')
-  await page.getByLabel('请假开始时间').fill('2026-10-20T08:00')
-  await page.getByLabel('请假结束时间').fill('2026-10-20T18:00')
-  await page.getByRole('button', { name: '请假去向' }).click()
-  await page.getByRole('button', { name: '离开本市不离开本省', exact: true }).click()
-  await page.getByLabel('请假去向(具体地址)').fill('本地测试地址')
-  await page.getByRole('button', { name: '是否在校外过夜' }).click()
-  await page.getByRole('button', { name: '否', exact: true }).click()
+  const add = page.getByRole('button', { name: '新建请假', exact: true })
+  const box = await add.boundingBox()
+  expect(box).not.toBeNull()
+  expect(box!.width).toBe(46)
+  expect(box!.height).toBe(46)
+  expect(box!.x).toBe(413 - 16 - 46)
+  expect(box!.y).toBe(751 - 20 - 46)
+  expect((await records.first().boundingBox())?.x).toBe(0)
 
-  await page.getByRole('button', { name: '提交' }).click()
-  await expect(page.getByText('本地模拟记录已保存')).toBeVisible()
-  await expect(page.getByText('审核中').first()).toBeVisible()
+  await add.click()
+  const notice = page.getByRole('dialog')
+  await expect(notice).toContainText('存在待审核或未销假的请假记录，不可继续请假!')
+  await notice.getByRole('button', { name: '确定', exact: true }).click()
+  await expect(notice).toBeHidden()
+  await expect(records).toHaveCount(2)
+  expect(requests).toEqual([])
+})
 
-  await page.getByRole('button', { name: '查看事假详情' }).first().click()
+test('both detail states support navigation, attachment previews and local-only actions', async ({ page }) => {
+  const requests = schoolRequests(page)
+  await page.goto('/')
+  await page.getByRole('button', { name: /查看事假详情/ }).first().click()
+  await expect(page).toHaveURL(/#\/detail\/sample-1$/)
+  await expect(page.locator('#sfxj')).toBeHidden()
 
-  await expect(page.locator('#sfxj')).toHaveText('审核中')
-  for (const label of [
-    '请假性质',
-    '请假类型',
-    '请假天数',
-    '请假事由',
-    '证明材料',
-    '手机号',
-    '请假开始时间',
-    '请假结束时间',
-    '请假去向',
-    '去向地区',
-    '请假去向(具体地址)',
-    '是否在校外过夜',
-    '家长知情同意佐证材料 (0/0)',
-    '审核流程',
-  ]) {
+  for (const label of ['请假性质', '请假类型', '请假天数', '请假事由', '证明材料', '手机号',
+    '请假开始时间', '请假结束时间', '请假去向', '去向地区', '请假去向(具体地址)', '是否在校外过夜', '审核流程']) {
     await expect(page.getByText(label, { exact: true }).first()).toBeVisible()
   }
+  for (const label of ['请假日期', '学生编号', 'WID', '申请编号', '审核状态']) {
+    await expect(page.getByText(label, { exact: true })).toBeHidden()
+  }
+  await expect(page.locator('.mint-step')).toHaveCount(6)
+  expect((await page.locator('.emapm-item').first().boundingBox())?.x).toBe(20)
+  expect((await page.locator('.mint-cell-title').first().boundingBox())?.width).toBe(96)
 
-  for (const hiddenLabel of ['请假日期', '学生编号', 'WID', '申请编号', '审核状态']) {
-    await expect(page.getByText(hiddenLabel, { exact: true })).toBeHidden()
+  for (const name of ['查看证明材料', '查看家长知情同意佐证材料']) {
+    await page.getByRole('button', { name, exact: true }).click()
+    const preview = page.getByRole('dialog', { name: '附件预览', exact: true })
+    await expect(preview).toBeVisible()
+    await expect(preview.locator('img')).toBeVisible()
+    await preview.getByRole('button', { name: '关闭预览', exact: true }).click()
+    await expect(preview).toBeHidden()
   }
 
-  await expect(page.getByText('本地网页功能测试')).toBeVisible()
-  await expect(page.getByText('13800138000')).toBeVisible()
-  await expect(page.getByText('本地测试地址')).toBeVisible()
-  await expect(page.getByText('未上传')).toBeVisible()
-  await expect(page.getByText('提交申请', { exact: true })).toBeVisible()
-  await expect(page.getByText('辅导员审核', { exact: true })).toBeVisible()
-
-  const statusBox = await page.locator('.sfxj-class').boundingBox()
-  const firstRowBox = await page.locator('.emapm-item').first().boundingBox()
-  expect(statusBox?.y).toBeCloseTo(13, 0)
-  expect(statusBox?.height).toBeCloseTo(35, 0)
-  expect(firstRowBox?.x).toBeCloseTo(20, 0)
-  expect(firstRowBox?.y).toBeCloseTo(58, 0)
-  expect(firstRowBox?.width).toBeCloseTo(370, 0)
-  expect(firstRowBox?.height).toBeCloseTo(28, 0)
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-
-  await page.screenshot({ path: 'artifacts/leave-detail-reference-390.png', fullPage: true })
-
-  await page.goto('/#/records')
-  await expect(page.getByText('本地网页功能测试')).toBeVisible()
-
-  const stored = await page.evaluate(() => localStorage.getItem('leave-web-local-records'))
-  expect(stored).toContain('本地网页功能测试')
-  expect(stored).toContain('审核中')
-
-  await page.goto('/#/detail/sample-1')
+  await page.getByRole('button', { name: '定位销假', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('确认定位销假吗？')
+  await expect(page.getByRole('button', { name: '定位销假', exact: true })).toHaveCount(1)
+  await page.getByRole('dialog').getByRole('button', { name: '确认销假', exact: true }).click()
+  await expect(page.getByRole('dialog')).toContainText('已销假')
+  await page.getByRole('dialog').getByRole('button', { name: '确定', exact: true }).click()
+  await expect(page.locator('#sfxj')).toHaveText('已销假')
+  await expect(page.getByRole('button', { name: '定位销假', exact: true })).toHaveCount(0)
+  const scrollContainer = page.locator('#root')
+  await scrollContainer.evaluate((element) => element.scrollTo(0, element.scrollHeight))
+  await expect.poll(() => scrollContainer.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+  await page.goBack()
+  await expect(page.getByRole('button', { name: /查看事假详情/ })).toHaveCount(2)
+  await expect(page.getByRole('button', { name: /查看事假详情/ }).first()).toContainText('已销假')
+  await expect.poll(() => scrollContainer.evaluate((element) => element.scrollTop)).toBe(0)
+  await page.goForward()
+  await expect(page).toHaveURL(/#\/detail\/sample-1$/)
+  await expect(page.locator('.emapm-form')).toBeVisible()
+  await expect.poll(() => scrollContainer.evaluate((element) => element.scrollTop)).toBe(0)
   await page.reload()
-  const proofBox = await page.locator('.bh-upload-wrap').boundingBox()
-  const parentBox = await page.locator('.parent-material-item').boundingBox()
-  const auditBox = await page.locator('.audit-container').boundingBox()
-  expect(proofBox?.y).toBeCloseTo(170.21875, 3)
-  expect(proofBox?.height).toBeCloseTo(114.21875, 3)
-  expect(parentBox?.y).toBeCloseTo(509.3125, 3)
-  expect(parentBox?.height).toBeCloseTo(124, 3)
-  expect(auditBox?.y).toBeCloseTo(664.3125, 3)
-  await expect(page.locator('.mint-step')).toHaveCount(6)
-  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(1154)
-  expect(externalRequests).toEqual([])
+  await expect(page.locator('.emapm-form')).toBeVisible()
+  await expect(page.locator('#sfxj')).toHaveText('已销假')
+  await expect(page.getByRole('button', { name: '定位销假', exact: true })).toHaveCount(0)
+
+  await page.goBack()
+  await page.getByRole('button', { name: /查看事假详情/ }).nth(1).click()
+  await expect(page).toHaveURL(/#\/detail\/sample-2$/)
+  await expect.poll(() => scrollContainer.evaluate((element) => element.scrollTop)).toBe(0)
+  await expect(page.locator('#sfxj')).toHaveText('已销假')
+  await expect(page.getByRole('button', { name: '定位销假', exact: true })).toHaveCount(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  expect(requests).toEqual([])
+})
+
+test('existing local form validates and persists an approved record', async ({ page }) => {
+  const requests = schoolRequests(page)
+  await page.goto('/#/new')
+  await page.getByRole('button', { name: '提交', exact: true }).click()
+  await expect(page.getByText('请选择请假性质', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: '请假性质', exact: true }).click()
+  await page.getByRole('button', { name: '因私请假', exact: true }).click()
+  await page.getByRole('button', { name: '请假类型', exact: true }).click()
+  await page.getByRole('button', { name: '事假', exact: true }).click()
+  await page.getByLabel('请假事由').fill('本地网页功能测试')
+  await page.getByLabel('手机号').fill('123')
+  await page.getByLabel('请假开始时间').fill('2026-10-27T08:00')
+  await page.getByLabel('请假结束时间').fill('2026-10-26T18:00')
+  await page.getByRole('button', { name: '请假去向', exact: true }).click()
+  await page.getByRole('button', { name: '离开本市不离开本省', exact: true }).click()
+  await page.getByLabel('请假去向(具体地址)').fill('本地测试地址')
+  await page.getByRole('button', { name: '是否在校外过夜', exact: true }).click()
+  await page.getByRole('button', { name: '否', exact: true }).click()
+  await page.getByRole('button', { name: '提交', exact: true }).click()
+  await expect(page.getByText('请输入正确的手机号', { exact: true })).toBeVisible()
+  await expect(page.getByText('结束时间需晚于开始时间', { exact: true })).toBeVisible()
+
+  await page.getByLabel('手机号').fill('13800138000')
+  await page.getByLabel('请假结束时间').fill('2026-10-27T18:00')
+  await page.getByRole('button', { name: '提交', exact: true }).click()
+  await expect(page.getByText('本地模拟记录已保存', { exact: true })).toBeVisible()
+  const records = page.getByRole('button', { name: /查看事假详情/ })
+  await expect(records).toHaveCount(3)
+  await expect(records.first()).toContainText('已通过')
+  await page.reload()
+  await expect(records).toHaveCount(3)
+  await records.first().click()
+  await expect(page.getByText('本地网页功能测试', { exact: true })).toBeVisible()
+  await expect(page.getByText('本地测试地址', { exact: true })).toBeVisible()
+  await expect(page.getByText('未上传', { exact: true })).toBeVisible()
+  await expect(page.getByText(/审核人：\s*201620012-黄渊健/)).toBeVisible()
+  expect(await page.evaluate(() => localStorage.getItem('leave-web-local-records'))).toContain('本地网页功能测试')
+  expect(requests).toEqual([])
 })

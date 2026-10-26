@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
-import { Camera, Check, ChevronRight, ClipboardList, Plus } from 'lucide-react'
+import { Camera, Check, ChevronRight, ClipboardList } from 'lucide-react'
 import proofPreview from './assets/proof-preview.svg'
+import parentPreview from './assets/parent-preview.svg'
+import RecordList from './RecordList'
 import './App.css'
 
 type Page = 'records' | 'form' | 'detail'
@@ -57,33 +59,34 @@ type LeaveForm = {
 }
 
 const STORAGE_KEY = 'leave-web-local-records'
+const COUNSELOR_REVIEWER = '201620012-黄渊健'
 const initialRecords: LeaveRecord[] = [
   {
     id: 'sample-1',
     applicationNumber: 'LOCAL-20261009-0001',
     nature: '因私请假',
     type: '事假',
-    reason: '个人事务',
-    start: '2026-10-09T08:00',
-    end: '2026-10-10T18:00',
-    days: 2,
+    reason: '个人事务，需要请假。次日上午返校',
+    start: '2026-10-25T08:00',
+    end: '2026-10-26T08:00',
+    days: 1,
     destination: '离开本市不离开本省',
     address: '本地示例地址',
     overnight: '是',
     phone: '138****0000',
     proofName: 'proof-example.jpg',
-    submittedAt: '2026-10-08T16:30',
-    status: '已销假',
+    submittedAt: '2026-10-24T13:17:09',
+    status: '已通过',
     studentNumber: '2023LOCAL001',
     wid: 'LOCAL-WID-0001',
     auditStatus: '已通过',
     proofCount: '1/0',
     destinationRegion: '示例省/示例市/示例区',
-    parentAttachmentName: 'parent-consent-example.jpg',
-    parentAttachmentSize: '256KB',
+    parentAttachmentName: 'Screenshot_2026-10-24-13-14-18-675_local.example.jpg',
+    parentAttachmentSize: '376KB',
     auditSteps: [
-      { time: '2026-10-08 16:30', title: '提交申请' },
-      { time: '2026-10-08 17:20', title: '辅导员审核', result: '通过', reviewer: 'LOCAL-001-示例审核人', opinion: '同意' },
+      { time: '2026-10-24 13:17:09', title: '提交申请' },
+      { time: '2026-10-24 16:04:08', title: '辅导员审核', result: '通过', reviewer: COUNSELOR_REVIEWER, opinion: '同意' },
       { title: '院系审核' },
       { title: '学校审核' },
       { title: '校领导审核' },
@@ -91,6 +94,25 @@ const initialRecords: LeaveRecord[] = [
     ],
   },
 ]
+
+initialRecords.push({
+  ...initialRecords[0],
+  id: 'sample-2',
+  applicationNumber: 'LOCAL-20260929-0002',
+  wid: 'LOCAL-WID-0002',
+  reason: '回家',
+  start: '2026-09-29T10:55',
+  end: '2026-09-30T10:55',
+  submittedAt: '2026-09-29T10:58:00',
+  status: '已销假',
+  parentAttachmentName: 'Screenshot_2026-09-29-10-57-04-588_local.example.jpg',
+  parentAttachmentSize: '390KB',
+  auditSteps: [
+    { time: '2026-09-29 10:58:00', title: '提交申请' },
+    { time: '2026-09-29 11:20:00', title: '辅导员审核', result: '通过', reviewer: COUNSELOR_REVIEWER, opinion: '同意' },
+    { title: '院系审核' }, { title: '学校审核' }, { title: '校领导审核' }, { title: '结束' },
+  ],
+})
 
 const initialForm: LeaveForm = {
   nature: '',
@@ -134,6 +156,16 @@ function readRecords(): LeaveRecord[] {
 function normalizeRecord(record: Partial<LeaveRecord>): LeaveRecord {
   const start = record.start ?? ''
   const end = record.end ?? ''
+  const auditSteps = (record.auditSteps ?? [
+    { time: record.submittedAt, title: '提交申请' },
+    { title: '辅导员审核' },
+    { title: '院系审核' },
+    { title: '学校审核' },
+    { title: '校领导审核' },
+    { title: '结束' },
+  ]).map((step) => step.title === '辅导员审核'
+    ? { ...step, result: step.result ?? '通过', reviewer: COUNSELOR_REVIEWER, opinion: step.opinion ?? '同意' }
+    : step)
   return {
     id: record.id ?? crypto.randomUUID(),
     applicationNumber: record.applicationNumber ?? 'LOCAL-UNKNOWN',
@@ -157,14 +189,7 @@ function normalizeRecord(record: Partial<LeaveRecord>): LeaveRecord {
     destinationRegion: record.destinationRegion ?? '示例省/示例市/示例区',
     parentAttachmentName: record.parentAttachmentName ?? '',
     parentAttachmentSize: record.parentAttachmentSize ?? '',
-    auditSteps: record.auditSteps ?? [
-      { time: record.submittedAt, title: '提交申请' },
-      { title: '辅导员审核' },
-      { title: '院系审核' },
-      { title: '学校审核' },
-      { title: '校领导审核' },
-      { title: '结束' },
-    ],
+    auditSteps,
   }
 }
 
@@ -194,7 +219,11 @@ function getRoute(): { page: Page; recordId: string | null } {
   const hash = window.location.hash
   if (hash === '#/new') return { page: 'form', recordId: null }
   if (hash.startsWith('#/detail/')) {
-    return { page: 'detail', recordId: decodeURIComponent(hash.slice('#/detail/'.length)) }
+    try {
+      return { page: 'detail', recordId: decodeURIComponent(hash.slice('#/detail/'.length)) }
+    } catch {
+      return { page: 'detail', recordId: null }
+    }
   }
   return { page: 'records', recordId: null }
 }
@@ -211,23 +240,30 @@ function calculateDays(start: string, end: string) {
 }
 
 function App() {
-  const initialRoute = getRoute()
-  const [page, setPage] = useState<Page>(initialRoute.page)
-  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(initialRoute.recordId)
+  const [{ page, recordId: selectedRecordId }, setRoute] = useState(getRoute)
   const [records, setRecords] = useState<LeaveRecord[]>(readRecords)
   const [form, setForm] = useState<LeaveForm>(initialForm)
   const [errors, setErrors] = useState<Partial<Record<keyof LeaveForm, string>>>({})
   const [activeSelect, setActiveSelect] = useState<SelectField | null>(null)
   const [savedMessage, setSavedMessage] = useState('')
+  const [notice, setNotice] = useState('')
+  const [confirmLeaveId, setConfirmLeaveId] = useState<string | null>(null)
 
   useEffect(() => {
-    const nextHash = page === 'form'
-      ? '#/new'
-      : page === 'detail' && selectedRecordId
-        ? `#/detail/${encodeURIComponent(selectedRecordId)}`
-        : '#/records'
-    window.history.replaceState(null, '', nextHash)
-  }, [page, selectedRecordId])
+    const previousScrollRestoration = window.history.scrollRestoration
+    window.history.scrollRestoration = 'manual'
+    const syncRoute = () => {
+      setRoute(getRoute())
+      setNotice('')
+      setActiveSelect(null)
+      document.getElementById('root')?.scrollTo(0, 0)
+    }
+    window.addEventListener('hashchange', syncRoute)
+    return () => {
+      window.removeEventListener('hashchange', syncRoute)
+      window.history.scrollRestoration = previousScrollRestoration
+    }
+  }, [])
 
   const updateForm = (key: keyof LeaveForm, value: string) => {
     setForm((current) => ({ ...current, [key]: value }))
@@ -245,20 +281,33 @@ function App() {
 
   const openDetail = (record: LeaveRecord) => {
     setSavedMessage('')
-    setSelectedRecordId(record.id)
-    setPage('detail')
+    window.location.hash = `/detail/${encodeURIComponent(record.id)}`
   }
 
   const closeDetail = () => {
-    setSelectedRecordId(null)
-    setPage('records')
+    window.location.hash = '/records'
   }
 
   const openForm = () => {
+    if (records.some((record) => ['审核中', '已通过'].includes(record.status))) {
+      setNotice('存在待审核或未销假的请假记录，不可继续请假!')
+      return
+    }
     setSavedMessage('')
     setErrors({})
     setForm(initialForm)
-    setPage('form')
+    window.location.hash = '/new'
+  }
+
+  const completeLeave = () => {
+    if (!confirmLeaveId) return
+    const next = records.map((record) => record.id === confirmLeaveId
+      ? { ...record, status: '已销假', auditStatus: '已销假' }
+      : record)
+    saveRecords(next)
+    setRecords(next)
+    setConfirmLeaveId(null)
+    setNotice('已销假')
   }
 
   const validate = () => {
@@ -297,17 +346,17 @@ function App() {
       phone: form.phone.trim(),
       proofName: form.proofName,
       submittedAt,
-      status: '审核中',
+      status: '已通过',
       studentNumber: '2023LOCAL000',
       wid: `LOCAL-WID-${id.slice(0, 8).toUpperCase()}`,
-      auditStatus: '审核中',
+      auditStatus: '已通过',
       proofCount: form.proofName ? '1/0' : '0/0',
       destinationRegion: '示例省/示例市/示例区',
       parentAttachmentName: '',
       parentAttachmentSize: '',
       auditSteps: [
         { time: formatDateTime(submittedAt), title: '提交申请' },
-        { title: '辅导员审核' },
+        { time: formatDateTime(submittedAt), title: '辅导员审核', result: '通过', reviewer: COUNSELOR_REVIEWER, opinion: '同意' },
         { title: '院系审核' },
         { title: '学校审核' },
         { title: '校领导审核' },
@@ -318,24 +367,19 @@ function App() {
     saveRecords(next)
     setRecords(next)
     setSavedMessage('本地模拟记录已保存')
-    setPage('records')
-  }
-
-  const clearRecords = () => {
-    if (!window.confirm('确定清空当前浏览器中的本地模拟记录吗？')) return
-    saveRecords([])
-    setRecords([])
-    setSavedMessage('')
+    window.location.hash = '/records'
   }
 
   return (
     <main className="app-shell">
       {page === 'records' ? (
-        <RecordList records={records} message={savedMessage} onCreate={openForm} onClear={clearRecords} onOpenDetail={openDetail} />
+        <RecordList records={records} message={savedMessage} onCreate={openForm} onOpenDetail={openDetail} />
       ) : page === 'detail' ? (
         <LeaveDetail
+          key={selectedRecordId}
           record={records.find((record) => record.id === selectedRecordId || record.applicationNumber === selectedRecordId)}
           onBack={closeDetail}
+          onLocate={() => selectedRecordId && setConfirmLeaveId(selectedRecordId)}
         />
       ) : (
         <LeaveFormPage
@@ -354,65 +398,58 @@ function App() {
           onSubmit={handleSubmit}
         />
       )}
+      {confirmLeaveId && <NoticeDialog
+        message="确认定位销假吗？"
+        onClose={() => setConfirmLeaveId(null)}
+        onConfirm={completeLeave}
+        confirmLabel="确认销假"
+      />}
+      {notice && <NoticeDialog message={notice} onClose={() => setNotice('')} />}
     </main>
   )
 }
 
-function RecordList({
-  records,
+function NoticeDialog({
   message,
-  onCreate,
-  onClear,
-  onOpenDetail,
+  onClose,
+  onConfirm,
+  confirmLabel = '确定',
 }: {
-  records: LeaveRecord[]
   message: string
-  onCreate: () => void
-  onClear: () => void
-  onOpenDetail: (record: LeaveRecord) => void
+  onClose: () => void
+  onConfirm?: () => void
+  confirmLabel?: string
 }) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => { dialog.current?.showModal() }, [])
   return (
-    <section className="records-page">
-      <div className="page-intro">
-        <span className="intro-label">事假</span>
-        <div className="intro-meta">
-          <span className="intro-count">共 {records.length} 条记录</span>
-          {records.length > 0 && <button className="clear-button" onClick={onClear}>清空</button>}
+    <dialog ref={dialog} className="notice-dialog" aria-labelledby="notice-title" onCancel={onClose}>
+      <div id="notice-title" className="notice-title">提示</div>
+      <div className="notice-message">{message}</div>
+      {onConfirm ? (
+        <div className="notice-actions">
+          <button type="button" className="notice-cancel" onClick={onClose}>取消</button>
+          <button type="button" onClick={onConfirm}>{confirmLabel}</button>
         </div>
-      </div>
-      {message && <div className="toast-message" role="status">{message}</div>}
-      {records.length === 0 ? (
-        <div className="empty-state">
-          <ClipboardList aria-hidden="true" size={48} strokeWidth={1.5} />
-          <p>暂无请假记录</p>
-          <span>点击右下角“+”创建本地模拟记录</span>
-        </div>
-      ) : (
-        <div className="record-list">
-          {records.map((record) => (
-            <button className="record-card record-open" type="button" key={record.id} onClick={() => onOpenDetail(record)} aria-label={`查看${record.type}详情`}>
-              <div className="record-card-head">
-                <strong>{record.type}</strong>
-                <span className="status-badge">{record.status}</span>
-              </div>
-              <div className="record-row"><span>请假性质</span><b>{record.nature}</b></div>
-              <div className="record-row"><span>请假日期</span><b>{dateOnly(record.start)} 至 {dateOnly(record.end)}</b></div>
-              <div className="record-row"><span>请假天数</span><b>{record.days} 天</b></div>
-              <div className="record-row"><span>请假事由</span><b>{record.reason}</b></div>
-              <div className="record-detail-link">查看详细数据 <ChevronRight aria-hidden="true" size={16} /></div>
-            </button>
-          ))}
-          <div className="no-more">没有更多啦</div>
-        </div>
-      )}
-      <button className="floating-add" onClick={onCreate} aria-label="新建请假">
-        <Plus aria-hidden="true" size={32} strokeWidth={1.8} />
-      </button>
-    </section>
+      ) : <button type="button" onClick={onClose}>{confirmLabel}</button>}
+    </dialog>
   )
 }
 
-function LeaveDetail({ record, onBack }: { record?: LeaveRecord; onBack: () => void }) {
+function AttachmentPreview({ src, onClose }: { src: string; onClose: () => void }) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => { dialog.current?.showModal() }, [])
+  return (
+    <dialog ref={dialog} className="attachment-preview" aria-label="附件预览" onCancel={onClose} onClick={onClose}>
+      <button className="preview-close" type="button" aria-label="关闭预览" onClick={onClose}>×</button>
+      <img src={src} alt="本地示例附件" />
+      <span className="preview-counter">1/1</span>
+    </dialog>
+  )
+}
+
+function LeaveDetail({ record, onBack, onLocate }: { record?: LeaveRecord; onBack: () => void; onLocate: () => void }) {
+  const [preview, setPreview] = useState<string | null>(null)
   if (!record) {
     return (
       <section className="detail-page">
@@ -428,10 +465,11 @@ function LeaveDetail({ record, onBack }: { record?: LeaveRecord; onBack: () => v
 
   return (
     <section className="detail-page reference-detail">
-      <div className="mint-layout-container sfxj-class">
+      <div className="mint-hr detail-top-line" />
+      {record.status === '已销假' && <div className="mint-layout-container sfxj-class">
         <span className="status-ok-icon" aria-hidden="true"><Check size={17} strokeWidth={3} /></span>
         <span id="sfxj">{record.status}</span>
-      </div>
+      </div>}
 
       <div className="emapm-form emapm-form-readonly">
         <div className="mint-cell-group mt-bg-lv2">
@@ -456,9 +494,9 @@ function LeaveDetail({ record, onBack }: { record?: LeaveRecord; onBack: () => v
                 </div>
               </div>
               {record.proofName && (
-                <div className="upload_item">
-                  <img className="upload_img" src={proofPreview} alt="" />
-                </div>
+                <button type="button" className="upload_item" aria-label="查看证明材料" onClick={() => setPreview(record.id === 'sample-2' ? parentPreview : proofPreview)}>
+                  <img className="upload_img" src={record.id === 'sample-2' ? parentPreview : proofPreview} alt="" />
+                </button>
               )}
             </div>
 
@@ -476,10 +514,10 @@ function LeaveDetail({ record, onBack }: { record?: LeaveRecord; onBack: () => v
                   家长知情同意佐证材料 ({record.parentAttachmentName ? '1/1' : '0/0'})
                 </p>
                 {record.parentAttachmentName ? (
-                  <div className="mint-cell mt-bg-white">
+                  <button className="mint-cell mt-bg-white attachment-button" type="button" aria-label="查看家长知情同意佐证材料" onClick={() => setPreview(parentPreview)}>
                     <div className="mint-cell-wrapper">
                       <div className="mint-cell-title parent-file-title">
-                        <img className="__em-img-icon" src={proofPreview} alt="" />
+                        <img className="__em-img-icon" src={parentPreview} alt="" />
                         <div className="__em-file-info">
                           <p className="__em-file-info_name">{record.parentAttachmentName}</p>
                           <p className="__em-file-info_size"><span>{record.parentAttachmentSize || '未知大小'}</span></p>
@@ -487,7 +525,7 @@ function LeaveDetail({ record, onBack }: { record?: LeaveRecord; onBack: () => v
                       </div>
                       <div className="mint-cell-value" />
                     </div>
-                  </div>
+                  </button>
                 ) : (
                   <div className="attachment-empty">未上传</div>
                 )}
@@ -514,7 +552,7 @@ function LeaveDetail({ record, onBack }: { record?: LeaveRecord; onBack: () => v
           <div className="mint-steps__items mint-steps__items--alone">
             {record.auditSteps.map((step, index) => (
               <div className={`mint-step mint-step--vertical mint-step--finish ${step.result ? 'has-result' : ''}`} key={`${step.title}-${index}`}>
-                <div className="mint-step__circle-container"><Check className="mint-step__icon" size={23} strokeWidth={1.8} /></div>
+                <div className="mint-step__circle-container"><span className="mint-step__icon"><Check size={16} strokeWidth={1.5} /></span></div>
                 <div className="mint-step__line" />
                 <div className={`mint-step__time ${index === record.auditSteps.length - 1 ? '' : 'has-slot'}`}>
                   {index > 0 && <div className="mint-step__time-spacer" />}
@@ -533,7 +571,9 @@ function LeaveDetail({ record, onBack }: { record?: LeaveRecord; onBack: () => v
       </div>
 
       <div className="mint-layout-spacing detail-spacing" />
+      {record.status === '已通过' && <button type="button" className="locate-button" onClick={onLocate}>定位销假</button>}
       <div className="mint-layout-spacing detail-spacing" />
+      {preview && <AttachmentPreview src={preview} onClose={() => setPreview(null)} />}
     </section>
   )
 }
