@@ -35,13 +35,13 @@ button { cursor: pointer; }
   display: flex;
   align-items: center;
   min-height: 50px;
-  margin: 0 20px;
-  padding: 0;
+  margin: 0;
+  padding: 0 12px;
   background: #fff;
   border-bottom: 1px solid #e8e8e8;
 }
-.form-cell label, .upload-title { flex: 0 0 104px; color: #333; font-size: 16px; line-height: 24px; }
-.required { margin-left: 2px; color: #dc3a3a; }
+.form-cell label { flex: 0 0 111px; margin-right: 0; color: #333; font-size: 16px; line-height: 24px; }
+.required { margin-right: 2px; color: #dc3a3a; }
 .select-cell { display: block; min-height: 50px; }
 .select-cell > button {
   display: flex;
@@ -55,6 +55,8 @@ button { cursor: pointer; }
   color: #333;
   text-align: left;
 }
+.select-cell > button > span:first-child { flex: 0 0 111px; margin-right: 0; }
+.overnight-cell > button > span:first-child { font-size: 15px; }
 .select-value { display: inline-flex; align-items: center; color: #a3a3a3; font-size: 16px; white-space: nowrap; }
 .select-value.selected { color: #444; }
 .select-value svg { margin-left: 12px; color: #aaa; }
@@ -71,12 +73,35 @@ button { cursor: pointer; }
 .form-cell input::placeholder, .form-cell textarea::placeholder { color: #b0b0b0; }
 .form-cell input[readonly] { color: #666; }
 .field-cell input { width: 100%; height: 28px; padding: 0; }
-.field-cell input[type="datetime-local"] { color: #777; font-size: 14px; }
-.field-cell input[type="datetime-local"]::-webkit-calendar-picker-indicator { opacity: .45; }
+.date-control { position: relative; flex: 1; min-width: 0; height: 50px; }
+.date-input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100% !important;
+  height: 100% !important;
+  opacity: 0;
+  cursor: pointer;
+}
+.date-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  color: #a3a3a3;
+  font-size: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.date-display.selected { color: #444; }
+.date-display svg { flex: 0 0 auto; margin-left: 12px; color: #aaa; }
+.date-cell label { white-space: nowrap; }
 
 .textarea-cell {
   display: grid;
-  grid-template-columns: 104px 1fr;
+  grid-template-columns: 111px minmax(0, 1fr);
+  column-gap: 0;
   align-items: start;
   min-height: 125px;
   padding-top: 10px;
@@ -84,8 +109,8 @@ button { cursor: pointer; }
 .textarea-cell textarea { width: 100%; min-height: 80px; padding: 0; resize: vertical; line-height: 24px; }
 .counter { position: absolute; right: 2px; bottom: 7px; color: #555; font-size: 13px; }
 
-.upload-cell { display: block; min-height: 202px; padding: 14px 0 0; }
-.upload-title { margin-bottom: 12px; }
+.upload-cell { display: block; min-height: 202px; padding: 14px 20px 0; }
+.upload-title { margin-bottom: 12px; color: #333; font-size: 16px; line-height: 24px; }
 .upload-box {
   display: flex;
   flex-direction: column;
@@ -103,7 +128,7 @@ button { cursor: pointer; }
 
 .field-error {
   position: absolute;
-  left: 104px;
+  left: 123px;
   bottom: -17px;
   z-index: 2;
   color: #e04b4b;
@@ -179,10 +204,8 @@ button { cursor: pointer; }
 
 
 @media (max-width: 430px) {
-  .form-cell label, .upload-title { flex-basis: 145px; font-size: 15px; }
-  .field-cell label { font-size: 13px; line-height: 18px; }
-  .textarea-cell { grid-template-columns: 145px 1fr; }
-  .field-error { left: 145px; }
+  .form-cell label { font-size: 16px; line-height: 22px; }
+  .textarea-cell { grid-template-columns: 111px minmax(0, 1fr); }
 }
 
 /* Reference-detail layout transcribed from the supplied saved page */

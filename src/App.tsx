@@ -239,6 +239,14 @@ function calculateDays(start: string, end: string) {
   return Math.max(1, Math.ceil(diff / (24 * 60 * 60 * 1000)))
 }
 
+function formatDateChoice(value: string) {
+  if (!value) return '请选择'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 function App() {
   const [{ page, recordId: selectedRecordId }, setRoute] = useState(getRoute)
   const [records, setRecords] = useState<LeaveRecord[]>(readRecords)
@@ -631,7 +639,7 @@ function LeaveFormPage({
         <input id="days" value={form.days} readOnly placeholder="" aria-label="请假天数" />
       </div>
       <div className={`form-cell textarea-cell ${errors.reason ? 'has-error' : ''}`}>
-        <label htmlFor="reason">请假事由<span className="required">*</span></label>
+        <label htmlFor="reason"><span className="required">*</span>请假事由</label>
         <textarea id="reason" maxLength={1000} value={form.reason} onChange={(event) => onChange('reason', event.target.value)} placeholder="请输入请假事由" />
         <span className="counter">{form.reason.length}/1000</span>
         {errors.reason && <small className="field-error">{errors.reason}</small>}
@@ -650,10 +658,10 @@ function LeaveFormPage({
       <DateCell label="请假开始时间" value={form.start} error={errors.start} onChange={(value) => onDateChange('start', value)} />
       <DateCell label="请假结束时间" value={form.end} error={errors.end} onChange={(value) => onDateChange('end', value)} />
       <SelectCell label="请假去向" value={form.destination} required error={errors.destination} onClick={() => onOpenSelect('destination')} />
-      <FieldCell id="address" label="请假去向(具体地址)" required error={errors.address}>
-        <input id="address" value={form.address} onChange={(event) => onChange('address', event.target.value)} placeholder="请输入请假去向(具体地址)" />
+      <FieldCell id="address" label="请假去向（具体地址）" required error={errors.address}>
+        <input id="address" aria-label="请假去向(具体地址)" value={form.address} onChange={(event) => onChange('address', event.target.value)} placeholder="请输入请假去向（具体地址）" />
       </FieldCell>
-      <SelectCell label="是否在校外过夜" value={form.overnight} required error={errors.overnight} onClick={() => onOpenSelect('overnight')} />
+      <SelectCell className="overnight-cell" label="是否在校外过夜" value={form.overnight} required error={errors.overnight} onClick={() => onOpenSelect('overnight')} />
       <button className="submit-button" type="submit">提交</button>
       <p className="local-note">此按钮仅保存到当前浏览器，不会提交到学校系统。</p>
       {activeSelect && (
@@ -683,7 +691,7 @@ function FieldCell({
 }) {
   return (
     <div className={`form-cell field-cell ${error ? 'has-error' : ''}`}>
-      <label htmlFor={id}>{label}{required && <span className="required">*</span>}</label>
+      <label htmlFor={id}>{required && <span className="required">*</span>}{label}</label>
       {children}
       {error && <small className="field-error">{error}</small>}
     </div>
@@ -702,9 +710,22 @@ function DateCell({
   onChange: (value: string) => void
 }) {
   return (
-    <div className={`form-cell field-cell ${error ? 'has-error' : ''}`}>
-      <label>{label}<span className="required">*</span></label>
-      <input type="datetime-local" value={value} onChange={(event) => onChange(event.target.value)} aria-label={label} />
+    <div className={`form-cell field-cell date-cell ${error ? 'has-error' : ''}`}>
+      <label htmlFor={`date-${label}`}><span className="required">*</span>{label}</label>
+      <div className="date-control">
+        <input
+          id={`date-${label}`}
+          className="date-input"
+          type="datetime-local"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          aria-label={label}
+        />
+        <span className={`date-display ${value ? 'selected' : ''}`} aria-hidden="true">
+          {formatDateChoice(value)}
+          <ChevronRight size={21} strokeWidth={1.6} />
+        </span>
+      </div>
       {error && <small className="field-error">{error}</small>}
     </div>
   )
@@ -716,17 +737,19 @@ function SelectCell({
   required,
   error,
   onClick,
+  className = '',
 }: {
   label: string
   value: string
   required?: boolean
   error?: string
   onClick: () => void
+  className?: string
 }) {
   return (
-    <div className={`form-cell select-cell ${error ? 'has-error' : ''}`}>
+    <div className={`form-cell select-cell ${className} ${error ? 'has-error' : ''}`.trim()}>
       <button type="button" onClick={onClick} aria-label={`${label}${value ? `，当前为${value}` : ''}`}>
-        <span>{label}{required && <span className="required">*</span>}</span>
+        <span>{required && <span className="required">*</span>}{label}</span>
         <span className={`select-value ${value ? 'selected' : ''}`}>
           {value || '请选择'}
           <ChevronRight aria-hidden="true" size={21} strokeWidth={1.6} />
