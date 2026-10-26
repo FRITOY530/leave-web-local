@@ -4,10 +4,11 @@ import { Camera, Check, ChevronRight, ClipboardList } from 'lucide-react'
 import proofPreview from './assets/proof-preview.svg'
 import parentPreview from './assets/parent-preview.svg'
 import RecordList from './RecordList'
+import { HUNAN_REGIONS } from './regions'
 import './App.css'
 
 type Page = 'records' | 'form' | 'detail'
-type SelectField = 'nature' | 'type' | 'destination' | 'overnight'
+type SelectField = 'nature' | 'type' | 'destination' | 'destinationRegion' | 'overnight'
 type DateField = 'start' | 'end'
 
 type AuditStep = {
@@ -53,6 +54,7 @@ type LeaveForm = {
   start: string
   end: string
   destination: string
+  destinationRegion: string
   address: string
   overnight: string
   proofName: string
@@ -71,7 +73,7 @@ const initialRecords: LeaveRecord[] = [
     start: '2026-10-25T08:00',
     end: '2026-10-26T08:00',
     days: 1,
-    destination: '离开本市不离开本省',
+    destination: '离开长沙市不离开湖南省',
     address: '本地示例地址',
     overnight: '是',
     phone: '138****0000',
@@ -82,7 +84,7 @@ const initialRecords: LeaveRecord[] = [
     wid: 'LOCAL-WID-0001',
     auditStatus: '已通过',
     proofCount: '1/0',
-    destinationRegion: '示例省/示例市/示例区',
+    destinationRegion: '湖南省/湘潭市/湘乡市',
     parentAttachmentName: 'Screenshot_2026-10-24-13-14-18-675_local.example.jpg',
     parentAttachmentSize: '376KB',
     auditSteps: [
@@ -124,6 +126,7 @@ const initialForm: LeaveForm = {
   start: '',
   end: '',
   destination: '',
+  destinationRegion: '',
   address: '',
   overnight: '',
   proofName: '',
@@ -133,7 +136,8 @@ const initialForm: LeaveForm = {
 const options: Record<SelectField, string[]> = {
   nature: ['因私请假', '因病请假', '公假'],
   type: ['事假', '病假', '其他'],
-  destination: ['离开本市不离开本省', '离开本省', '校内'],
+  destination: ['校内', '校外不离开长沙市', '离开长沙市不离开湖南省', '离开湖南省'],
+  destinationRegion: HUNAN_REGIONS.map((region) => region.city),
   overnight: ['是', '否'],
 }
 
@@ -141,6 +145,7 @@ const labels: Record<SelectField, string> = {
   nature: '请假性质',
   type: '请假类型',
   destination: '请假去向',
+  destinationRegion: '去向地区',
   overnight: '是否在校外过夜',
 }
 
@@ -255,6 +260,7 @@ function App() {
   const [form, setForm] = useState<LeaveForm>(initialForm)
   const [errors, setErrors] = useState<Partial<Record<keyof LeaveForm, string>>>({})
   const [activeSelect, setActiveSelect] = useState<SelectField | null>(null)
+  const [activeRegionCity, setActiveRegionCity] = useState<string | null>(null)
   const [savedMessage, setSavedMessage] = useState('')
   const [notice, setNotice] = useState('')
   const [confirmLeaveId, setConfirmLeaveId] = useState<string | null>(null)
@@ -287,6 +293,24 @@ function App() {
       return { ...next, days: days ? String(days) : '' }
     })
     setErrors((current) => ({ ...current, [key]: undefined }))
+  }
+
+  const selectFormValue = (key: SelectField, value: string) => {
+    updateForm(key, value)
+    if (key === 'destinationRegion') setActiveRegionCity(null)
+    if (key === 'destination' && value !== '离开长沙市不离开湖南省') {
+      updateForm('destinationRegion', '')
+    }
+  }
+
+  const openSelect = (field: SelectField) => {
+    setActiveSelect(field)
+    if (field === 'destinationRegion') setActiveRegionCity(null)
+  }
+
+  const closeSelect = () => {
+    setActiveSelect(null)
+    setActiveRegionCity(null)
   }
 
   const openDetail = (record: LeaveRecord) => {
@@ -330,6 +354,7 @@ function App() {
     if (!form.end) next.end = '请选择请假结束时间'
     if (form.start && form.end && new Date(form.end) <= new Date(form.start)) next.end = '结束时间需晚于开始时间'
     if (!form.destination) next.destination = '请选择请假去向'
+    if (form.destination === '离开长沙市不离开湖南省' && !form.destinationRegion) next.destinationRegion = '请选择去向地区'
     if (!form.address.trim()) next.address = '请填写具体地址'
     if (!form.overnight) next.overnight = '请选择是否在校外过夜'
     if (form.overnight === '是' && !form.parentProofName) next.parentProofName = '请上传家长知情同意佐证材料'
@@ -352,6 +377,7 @@ function App() {
       end: form.end,
       days: calculateDays(form.start, form.end),
       destination: form.destination,
+      destinationRegion: form.destinationRegion,
       address: form.address.trim(),
       overnight: form.overnight,
       phone: form.phone.trim(),
@@ -362,7 +388,6 @@ function App() {
       wid: `LOCAL-WID-${id.slice(0, 8).toUpperCase()}`,
       auditStatus: '已通过',
       proofCount: form.proofName ? '1/0' : '0/0',
-      destinationRegion: '示例省/示例市/示例区',
       parentAttachmentName: form.parentProofName,
       parentAttachmentSize: form.parentProofName ? '本地文件' : '',
       auditSteps: [
@@ -397,12 +422,14 @@ function App() {
           form={form}
           errors={errors}
           activeSelect={activeSelect}
-          onOpenSelect={setActiveSelect}
-          onCloseSelect={() => setActiveSelect(null)}
+          onOpenSelect={openSelect}
+          onCloseSelect={closeSelect}
           onSelect={(key, value) => {
-            updateForm(key, value)
-            setActiveSelect(null)
+            selectFormValue(key, value)
+            closeSelect()
           }}
+          activeRegionCity={activeRegionCity}
+          onRegionCitySelect={setActiveRegionCity}
           onChange={updateForm}
           onDateChange={updateDate}
           onFile={(event) => updateForm('proofName', event.target.files?.[0]?.name ?? '')}
@@ -617,6 +644,8 @@ function LeaveFormPage({
   onOpenSelect,
   onCloseSelect,
   onSelect,
+  activeRegionCity,
+  onRegionCitySelect,
   onChange,
   onDateChange,
   onFile,
@@ -629,6 +658,8 @@ function LeaveFormPage({
   onOpenSelect: (field: SelectField) => void
   onCloseSelect: () => void
   onSelect: (field: SelectField, value: string) => void
+  activeRegionCity: string | null
+  onRegionCitySelect: (city: string | null) => void
   onChange: (key: keyof LeaveForm, value: string) => void
   onDateChange: (key: DateField, value: string) => void
   onFile: (event: ChangeEvent<HTMLInputElement>) => void
@@ -664,6 +695,9 @@ function LeaveFormPage({
       <DateCell label="请假开始时间" value={form.start} error={errors.start} onChange={(value) => onDateChange('start', value)} />
       <DateCell label="请假结束时间" value={form.end} error={errors.end} onChange={(value) => onDateChange('end', value)} />
       <SelectCell label="请假去向" value={form.destination} required error={errors.destination} onClick={() => onOpenSelect('destination')} />
+      {form.destination === '离开长沙市不离开湖南省' && (
+        <SelectCell label="去向地区" value={form.destinationRegion} required error={errors.destinationRegion} onClick={() => onOpenSelect('destinationRegion')} />
+      )}
       <FieldCell id="address" label="请假去向（具体地址）" required error={errors.address}>
         <input id="address" aria-label="请假去向(具体地址)" value={form.address} onChange={(event) => onChange('address', event.target.value)} placeholder="请输入请假去向（具体地址）" />
       </FieldCell>
@@ -683,6 +717,8 @@ function LeaveFormPage({
           selected={form[activeSelect]}
           onSelect={onSelect}
           onClose={onCloseSelect}
+          activeRegionCity={activeRegionCity}
+          onRegionCitySelect={onRegionCitySelect}
         />
       )}
     </form>
@@ -800,12 +836,52 @@ function SelectSheet({
   selected,
   onSelect,
   onClose,
+  activeRegionCity,
+  onRegionCitySelect,
 }: {
   field: SelectField
   selected: string
   onSelect: (field: SelectField, value: string) => void
   onClose: () => void
+  activeRegionCity: string | null
+  onRegionCitySelect: (city: string | null) => void
 }) {
+  if (field === 'destinationRegion') {
+    const currentRegion = activeRegionCity ? HUNAN_REGIONS.find((region) => region.city === activeRegionCity) : undefined
+    const regionOptions = currentRegion?.counties ?? HUNAN_REGIONS.map((region) => region.city)
+    return (
+      <div className="sheet-backdrop" role="presentation" onMouseDown={onClose}>
+        <div className="select-sheet region-sheet" role="dialog" aria-modal="true" aria-label="选择去向地区" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="sheet-head">
+            <strong>{currentRegion ? `湖南省/${currentRegion.city}` : '湖南省'}</strong>
+            <button type="button" onClick={onClose} aria-label="关闭">×</button>
+          </div>
+          {currentRegion && (
+            <button type="button" className="sheet-back" onClick={() => onRegionCitySelect(null)}>← 返回市列表</button>
+          )}
+          <div className="sheet-scroll">
+            {regionOptions.map((option) => {
+              const value = currentRegion ? `湖南省/${currentRegion.city}/${option}` : option
+              const isSelected = value === selected
+              return (
+                <button
+                  className={`sheet-option ${isSelected ? 'active' : ''}`}
+                  type="button"
+                  key={option}
+                  onClick={() => currentRegion ? onSelect(field, value) : onRegionCitySelect(option)}
+                >
+                  {option}
+                  {isSelected && <span>✓</span>}
+                  {!currentRegion && <ChevronRight aria-hidden="true" size={18} strokeWidth={1.6} />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="sheet-backdrop" role="presentation" onMouseDown={onClose}>
       <div className="select-sheet" role="dialog" aria-modal="true" aria-label={`选择${labels[field]}`} onMouseDown={(event) => event.stopPropagation()}>
