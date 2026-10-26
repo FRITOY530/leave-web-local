@@ -254,6 +254,10 @@ function formatDateChoice(value: string) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+function requiresDestinationRegion(destination: string) {
+  return ['校外不离开长沙市', '离开长沙市不离开湖南省'].includes(destination)
+}
+
 function App() {
   const [{ page, recordId: selectedRecordId }, setRoute] = useState(getRoute)
   const [records, setRecords] = useState<LeaveRecord[]>(readRecords)
@@ -298,7 +302,7 @@ function App() {
   const selectFormValue = (key: SelectField, value: string) => {
     updateForm(key, value)
     if (key === 'destinationRegion') setActiveRegionCity(null)
-    if (key === 'destination' && value !== '离开长沙市不离开湖南省') {
+    if (key === 'destination') {
       updateForm('destinationRegion', '')
     }
   }
@@ -354,7 +358,7 @@ function App() {
     if (!form.end) next.end = '请选择请假结束时间'
     if (form.start && form.end && new Date(form.end) <= new Date(form.start)) next.end = '结束时间需晚于开始时间'
     if (!form.destination) next.destination = '请选择请假去向'
-    if (form.destination === '离开长沙市不离开湖南省' && !form.destinationRegion) next.destinationRegion = '请选择去向地区'
+    if (requiresDestinationRegion(form.destination) && !form.destinationRegion) next.destinationRegion = '请选择去向地区'
     if (!form.address.trim()) next.address = '请填写具体地址'
     if (!form.overnight) next.overnight = '请选择是否在校外过夜'
     if (form.overnight === '是' && !form.parentProofName) next.parentProofName = '请上传家长知情同意佐证材料'
@@ -430,6 +434,7 @@ function App() {
           }}
           activeRegionCity={activeRegionCity}
           onRegionCitySelect={setActiveRegionCity}
+          destination={form.destination}
           onChange={updateForm}
           onDateChange={updateDate}
           onFile={(event) => updateForm('proofName', event.target.files?.[0]?.name ?? '')}
@@ -646,6 +651,7 @@ function LeaveFormPage({
   onSelect,
   activeRegionCity,
   onRegionCitySelect,
+  destination,
   onChange,
   onDateChange,
   onFile,
@@ -660,6 +666,7 @@ function LeaveFormPage({
   onSelect: (field: SelectField, value: string) => void
   activeRegionCity: string | null
   onRegionCitySelect: (city: string | null) => void
+  destination: string
   onChange: (key: keyof LeaveForm, value: string) => void
   onDateChange: (key: DateField, value: string) => void
   onFile: (event: ChangeEvent<HTMLInputElement>) => void
@@ -695,7 +702,7 @@ function LeaveFormPage({
       <DateCell label="请假开始时间" value={form.start} error={errors.start} onChange={(value) => onDateChange('start', value)} />
       <DateCell label="请假结束时间" value={form.end} error={errors.end} onChange={(value) => onDateChange('end', value)} />
       <SelectCell label="请假去向" value={form.destination} required error={errors.destination} onClick={() => onOpenSelect('destination')} />
-      {form.destination === '离开长沙市不离开湖南省' && (
+      {requiresDestinationRegion(form.destination) && (
         <SelectCell label="去向地区" value={form.destinationRegion} required error={errors.destinationRegion} onClick={() => onOpenSelect('destinationRegion')} />
       )}
       <FieldCell id="address" label="请假去向（具体地址）" required error={errors.address}>
@@ -719,6 +726,7 @@ function LeaveFormPage({
           onClose={onCloseSelect}
           activeRegionCity={activeRegionCity}
           onRegionCitySelect={onRegionCitySelect}
+          destination={destination}
         />
       )}
     </form>
@@ -838,6 +846,7 @@ function SelectSheet({
   onClose,
   activeRegionCity,
   onRegionCitySelect,
+  destination,
 }: {
   field: SelectField
   selected: string
@@ -845,10 +854,14 @@ function SelectSheet({
   onClose: () => void
   activeRegionCity: string | null
   onRegionCitySelect: (city: string | null) => void
+  destination: string
 }) {
   if (field === 'destinationRegion') {
-    const currentRegion = activeRegionCity ? HUNAN_REGIONS.find((region) => region.city === activeRegionCity) : undefined
-    const regionOptions = currentRegion?.counties ?? HUNAN_REGIONS.map((region) => region.city)
+    const availableRegions = destination === '校外不离开长沙市'
+      ? HUNAN_REGIONS.filter((region) => region.city === '长沙市')
+      : HUNAN_REGIONS.filter((region) => region.city !== '长沙市')
+    const currentRegion = activeRegionCity ? availableRegions.find((region) => region.city === activeRegionCity) : undefined
+    const regionOptions = currentRegion?.counties ?? availableRegions.map((region) => region.city)
     return (
       <div className="sheet-backdrop" role="presentation" onMouseDown={onClose}>
         <div className="select-sheet region-sheet" role="dialog" aria-modal="true" aria-label="选择去向地区" onMouseDown={(event) => event.stopPropagation()}>

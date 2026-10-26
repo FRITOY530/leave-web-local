@@ -3,6 +3,10 @@ export type HunanRegion = { city: string; counties: string[] }
 
 export const HUNAN_REGIONS: HunanRegion[] = [
   {
+    city: '长沙市',
+    counties: ['芙蓉区', '天心区', '岳麓区', '开福区', '雨花区', '望城区', '长沙县', '宁乡市', '浏阳市'],
+  },
+  {
     "city": "株洲市",
     "counties": [
       "荷塘区",
