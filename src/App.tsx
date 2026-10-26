@@ -56,6 +56,7 @@ type LeaveForm = {
   address: string
   overnight: string
   proofName: string
+  parentProofName: string
 }
 
 const STORAGE_KEY = 'leave-web-local-records'
@@ -126,6 +127,7 @@ const initialForm: LeaveForm = {
   address: '',
   overnight: '',
   proofName: '',
+  parentProofName: '',
 }
 
 const options: Record<SelectField, string[]> = {
@@ -330,6 +332,7 @@ function App() {
     if (!form.destination) next.destination = '请选择请假去向'
     if (!form.address.trim()) next.address = '请填写具体地址'
     if (!form.overnight) next.overnight = '请选择是否在校外过夜'
+    if (form.overnight === '是' && !form.parentProofName) next.parentProofName = '请上传家长知情同意佐证材料'
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -360,8 +363,8 @@ function App() {
       auditStatus: '已通过',
       proofCount: form.proofName ? '1/0' : '0/0',
       destinationRegion: '示例省/示例市/示例区',
-      parentAttachmentName: '',
-      parentAttachmentSize: '',
+      parentAttachmentName: form.parentProofName,
+      parentAttachmentSize: form.parentProofName ? '本地文件' : '',
       auditSteps: [
         { time: formatDateTime(submittedAt), title: '提交申请' },
         { time: formatDateTime(submittedAt), title: '辅导员审核', result: '通过', reviewer: COUNSELOR_REVIEWER, opinion: '同意' },
@@ -403,6 +406,7 @@ function App() {
           onChange={updateForm}
           onDateChange={updateDate}
           onFile={(event) => updateForm('proofName', event.target.files?.[0]?.name ?? '')}
+          onParentFile={(event) => updateForm('parentProofName', event.target.files?.[0]?.name ?? '')}
           onSubmit={handleSubmit}
         />
       )}
@@ -616,6 +620,7 @@ function LeaveFormPage({
   onChange,
   onDateChange,
   onFile,
+  onParentFile,
   onSubmit,
 }: {
   form: LeaveForm
@@ -627,6 +632,7 @@ function LeaveFormPage({
   onChange: (key: keyof LeaveForm, value: string) => void
   onDateChange: (key: DateField, value: string) => void
   onFile: (event: ChangeEvent<HTMLInputElement>) => void
+  onParentFile: (event: ChangeEvent<HTMLInputElement>) => void
   onSubmit: (event: FormEvent) => void
 }) {
   return (
@@ -662,6 +668,13 @@ function LeaveFormPage({
         <input id="address" aria-label="请假去向(具体地址)" value={form.address} onChange={(event) => onChange('address', event.target.value)} placeholder="请输入请假去向（具体地址）" />
       </FieldCell>
       <SelectCell className="overnight-cell" label="是否在校外过夜" value={form.overnight} required error={errors.overnight} onClick={() => onOpenSelect('overnight')} />
+      {form.overnight === '是' && (
+        <ParentProofCell
+          fileName={form.parentProofName}
+          error={errors.parentProofName}
+          onFile={onParentFile}
+        />
+      )}
       <button className="submit-button" type="submit">提交</button>
       <p className="local-note">此按钮仅保存到当前浏览器，不会提交到学校系统。</p>
       {activeSelect && (
@@ -673,6 +686,28 @@ function LeaveFormPage({
         />
       )}
     </form>
+  )
+}
+
+function ParentProofCell({
+  fileName,
+  error,
+  onFile,
+}: {
+  fileName: string
+  error?: string
+  onFile: (event: ChangeEvent<HTMLInputElement>) => void
+}) {
+  return (
+    <div className={`parent-proof-cell ${error ? 'has-error' : ''}`}>
+      <div className="parent-proof-title"><span className="required">*</span>家长知情同意佐证材料 ({fileName ? '1/1' : '0/1'})</div>
+      <label className="parent-proof-trigger" htmlFor="parent-proof">
+        <span className="parent-proof-plus" aria-hidden="true">+</span>
+        <span>{fileName || '点击上传'}</span>
+      </label>
+      <input id="parent-proof" type="file" accept="image/*,.pdf" onChange={onFile} />
+      {error && <small className="field-error parent-proof-error">{error}</small>}
+    </div>
   )
 }
 

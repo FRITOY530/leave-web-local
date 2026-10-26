@@ -46,7 +46,7 @@ button { cursor: pointer; }
 .select-cell > button {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   width: 100%;
   min-height: 50px;
   padding: 0;
@@ -57,7 +57,7 @@ button { cursor: pointer; }
 }
 .select-cell > button > span:first-child { flex: 0 0 111px; margin-right: 0; }
 .overnight-cell > button > span:first-child { font-size: 15px; }
-.select-value { display: inline-flex; align-items: center; color: #a3a3a3; font-size: 16px; white-space: nowrap; }
+.select-value { display: inline-flex; flex: 1; min-width: 0; align-items: center; justify-content: space-between; color: #a3a3a3; font-size: 16px; white-space: nowrap; }
 .select-value.selected { color: #444; }
 .select-value svg { margin-left: 12px; color: #aaa; }
 
@@ -125,6 +125,46 @@ button { cursor: pointer; }
 }
 .upload-box span { max-width: 130px; margin-top: 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .upload-cell input[type="file"] { display: none; }
+
+.parent-proof-cell {
+  position: relative;
+  min-height: 92px;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+}
+.parent-proof-title {
+  display: flex;
+  align-items: center;
+  min-height: 50px;
+  padding: 0 12px;
+  color: #333;
+  font-size: 14px;
+  line-height: 20px;
+}
+.parent-proof-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  border-top: 1px solid #e8e8e8;
+  color: #52bfc1;
+  font-size: 16px;
+  cursor: pointer;
+}
+.parent-proof-plus {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #52c7ca;
+  font-size: 18px;
+  line-height: 20px;
+}
+.parent-proof-cell input[type="file"] { display: none; }
+.parent-proof-error { left: 12px; bottom: -17px; }
 
 .field-error {
   position: absolute;
