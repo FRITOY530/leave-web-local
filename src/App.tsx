@@ -33,6 +33,7 @@ type LeaveRecord = {
   overnight: string
   phone: string
   proofName: string
+  proofDataUrl?: string
   submittedAt: string
   status: string
   studentNumber: string
@@ -42,6 +43,7 @@ type LeaveRecord = {
   destinationRegion: string
   parentAttachmentName: string
   parentAttachmentSize: string
+  parentAttachmentDataUrl?: string
   auditSteps: AuditStep[]
 }
 
@@ -58,7 +60,9 @@ type LeaveForm = {
   address: string
   overnight: string
   proofName: string
+  proofDataUrl: string
   parentProofName: string
+  parentProofDataUrl: string
 }
 
 const STORAGE_KEY = 'leave-web-local-records'
@@ -130,7 +134,9 @@ const initialForm: LeaveForm = {
   address: '',
   overnight: '',
   proofName: '',
+  proofDataUrl: '',
   parentProofName: '',
+  parentProofDataUrl: '',
 }
 
 const options: Record<SelectField, string[]> = {
@@ -187,6 +193,7 @@ function normalizeRecord(record: Partial<LeaveRecord>): LeaveRecord {
     overnight: record.overnight ?? '',
     phone: record.phone ?? '',
     proofName: record.proofName ?? '',
+    proofDataUrl: record.proofDataUrl ?? '',
     submittedAt: record.submittedAt ?? start,
     status: record.status ?? '审核中',
     studentNumber: record.studentNumber ?? '2023LOCAL000',
@@ -196,12 +203,22 @@ function normalizeRecord(record: Partial<LeaveRecord>): LeaveRecord {
     destinationRegion: record.destinationRegion ?? '示例省/示例市/示例区',
     parentAttachmentName: record.parentAttachmentName ?? '',
     parentAttachmentSize: record.parentAttachmentSize ?? '',
+    parentAttachmentDataUrl: record.parentAttachmentDataUrl ?? '',
     auditSteps,
   }
 }
 
 function saveRecords(records: LeaveRecord[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(records))
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.addEventListener('load', () => resolve(typeof reader.result === 'string' ? reader.result : ''))
+    reader.addEventListener('error', () => reject(reader.error ?? new Error('无法读取附件')))
+    reader.readAsDataURL(file)
+  })
 }
 
 function dateOnly(value: string) {
@@ -386,6 +403,7 @@ function App() {
       overnight: form.overnight,
       phone: form.phone.trim(),
       proofName: form.proofName,
+      proofDataUrl: form.proofDataUrl,
       submittedAt,
       status: '已通过',
       studentNumber: '2023LOCAL000',
@@ -394,6 +412,7 @@ function App() {
       proofCount: form.proofName ? '1/0' : '0/0',
       parentAttachmentName: form.parentProofName,
       parentAttachmentSize: form.parentProofName ? '本地文件' : '',
+      parentAttachmentDataUrl: form.parentProofDataUrl,
       auditSteps: [
         { time: formatDateTime(submittedAt), title: '提交申请' },
         { time: formatDateTime(submittedAt), title: '辅导员审核', result: '通过', reviewer: COUNSELOR_REVIEWER, opinion: '同意' },
@@ -437,8 +456,18 @@ function App() {
           destination={form.destination}
           onChange={updateForm}
           onDateChange={updateDate}
-          onFile={(event) => updateForm('proofName', event.target.files?.[0]?.name ?? '')}
-          onParentFile={(event) => updateForm('parentProofName', event.target.files?.[0]?.name ?? '')}
+          onFile={async (event) => {
+            const file = event.target.files?.[0]
+            if (!file) return
+            updateForm('proofName', file.name)
+            updateForm('proofDataUrl', await fileToDataUrl(file))
+          }}
+          onParentFile={async (event) => {
+            const file = event.target.files?.[0]
+            if (!file) return
+            updateForm('parentProofName', file.name)
+            updateForm('parentProofDataUrl', await fileToDataUrl(file))
+          }}
           onSubmit={handleSubmit}
         />
       )}
@@ -507,6 +536,9 @@ function LeaveDetail({ record, onBack, onLocate }: { record?: LeaveRecord; onBac
     )
   }
 
+  const proofSource = record.proofDataUrl || (record.id === 'sample-2' ? parentPreview : proofPreview)
+  const parentAttachmentSource = record.parentAttachmentDataUrl || parentPreview
+
   return (
     <section className="detail-page reference-detail">
       <div className="mint-hr detail-top-line" />
@@ -538,8 +570,8 @@ function LeaveDetail({ record, onBack, onLocate }: { record?: LeaveRecord; onBac
                 </div>
               </div>
               {record.proofName && (
-                <button type="button" className="upload_item" aria-label="查看证明材料" onClick={() => setPreview(record.id === 'sample-2' ? parentPreview : proofPreview)}>
-                  <img className="upload_img" src={record.id === 'sample-2' ? parentPreview : proofPreview} alt="" />
+                <button type="button" className="upload_item" aria-label="查看证明材料" onClick={() => setPreview(proofSource)}>
+                  <img className="upload_img" src={proofSource} alt="" />
                 </button>
               )}
             </div>
@@ -558,10 +590,10 @@ function LeaveDetail({ record, onBack, onLocate }: { record?: LeaveRecord; onBac
                   家长知情同意佐证材料 ({record.parentAttachmentName ? '1/1' : '0/0'})
                 </p>
                 {record.parentAttachmentName ? (
-                  <button className="mint-cell mt-bg-white attachment-button" type="button" aria-label="查看家长知情同意佐证材料" onClick={() => setPreview(parentPreview)}>
+                  <button className="mint-cell mt-bg-white attachment-button" type="button" aria-label="查看家长知情同意佐证材料" onClick={() => setPreview(parentAttachmentSource)}>
                     <div className="mint-cell-wrapper">
                       <div className="mint-cell-title parent-file-title">
-                        <img className="__em-img-icon" src={parentPreview} alt="" />
+                        <img className="__em-img-icon" src={parentAttachmentSource} alt="" />
                         <div className="__em-file-info">
                           <p className="__em-file-info_name">{record.parentAttachmentName}</p>
                           <p className="__em-file-info_size"><span>{record.parentAttachmentSize || '未知大小'}</span></p>

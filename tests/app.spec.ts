@@ -162,3 +162,47 @@ test('existing local form validates and persists an approved record', async ({ p
   expect(await page.evaluate(() => localStorage.getItem('leave-web-local-records'))).toContain('本地网页功能测试')
   expect(requests).toEqual([])
 })
+
+test('local uploaded proof image is kept in the saved record and detail preview', async ({ page }) => {
+  await page.goto('/#/new')
+  await page.getByRole('button', { name: '请假性质', exact: true }).click()
+  await page.getByRole('button', { name: '因私请假', exact: true }).click()
+  await page.getByRole('button', { name: '请假类型', exact: true }).click()
+  await page.getByRole('button', { name: '事假', exact: true }).click()
+  await page.getByLabel('请假事由').fill('上传图片回归测试')
+  await page.getByLabel('手机号').fill('13800138000')
+  await page.getByLabel('请假开始时间').fill('2026-10-27T08:00')
+  await page.getByLabel('请假结束时间').fill('2026-10-27T18:00')
+  await page.getByRole('button', { name: '请假去向', exact: true }).click()
+  await page.getByRole('button', { name: '校内', exact: true }).click()
+  await page.getByLabel('请假去向(具体地址)').fill('本地上传测试地址')
+  await page.getByRole('button', { name: '是否在校外过夜', exact: true }).click()
+  await page.getByRole('button', { name: '是', exact: true }).click()
+
+  const imageBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64')
+  await page.locator('#proof').setInputFiles({
+    name: 'my-upload.png',
+    mimeType: 'image/png',
+    buffer: imageBytes,
+  })
+  await expect(page.getByText('my-upload.png', { exact: true })).toBeVisible()
+  await page.locator('#parent-proof').setInputFiles({
+    name: 'my-parent-upload.png',
+    mimeType: 'image/png',
+    buffer: imageBytes,
+  })
+  await expect(page.getByText('my-parent-upload.png', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '提交', exact: true }).click()
+  await expect(page.getByText('本地模拟记录已保存', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: /查看事假详情/ }).first().click()
+
+  const thumbnail = page.locator('.upload_img')
+  await expect(thumbnail).toHaveAttribute('src', /^data:image\/png;base64,/)
+  await page.getByRole('button', { name: '查看证明材料', exact: true }).click()
+  const preview = page.getByRole('dialog', { name: '附件预览', exact: true })
+  await expect(preview.locator('img')).toHaveAttribute('src', /^data:image\/png;base64,/)
+  await preview.getByRole('button', { name: '关闭预览', exact: true }).click()
+  await page.getByRole('button', { name: '查看家长知情同意佐证材料', exact: true }).click()
+  await expect(page.locator('.parent-file-title img')).toHaveAttribute('src', /^data:image\/png;base64,/)
+  await expect(page.getByRole('dialog', { name: '附件预览', exact: true }).locator('img')).toHaveAttribute('src', /^data:image\/png;base64,/)
+})
