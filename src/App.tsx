@@ -389,7 +389,7 @@ function App() {
     if (!validate()) return
     const id = crypto.randomUUID()
     const submittedAt = new Date().toISOString()
-    const approvalDelaySeconds = 3600 + Math.floor(Math.random() * 3601)
+    const approvalDelaySeconds = 1800 + Math.floor(Math.random() * 1801)
     const approvedAt = new Date(Date.parse(submittedAt) + approvalDelaySeconds * 1000).toISOString()
     const record: LeaveRecord = {
       id,

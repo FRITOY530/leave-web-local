@@ -159,7 +159,7 @@ test('existing local form validates and persists an approved record', async ({ p
   const approvedTime = savedRecord.auditSteps[1].time
   expect(submittedTime).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:17$/)
   expect(approvedTime).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:17$/)
-  expect((Date.parse(approvedTime.replace(' ', 'T')) - Date.parse(submittedTime.replace(' ', 'T'))) / 1000).toBe(5400)
+  expect((Date.parse(approvedTime.replace(' ', 'T')) - Date.parse(submittedTime.replace(' ', 'T'))) / 1000).toBe(2700)
   await page.reload()
   await expect(records).toHaveCount(3)
   await records.first().click()
