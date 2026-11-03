@@ -105,6 +105,8 @@ test('both detail states support navigation, attachment previews and local-only 
 
 test('existing local form validates and persists an approved record', async ({ page }) => {
   const requests = schoolRequests(page)
+  await page.clock.setFixedTime(new Date('2026-11-03T15:42:17Z'))
+  await page.addInitScript(() => { Math.random = () => 0.5001 })
   await page.goto('/#/new')
   await page.getByRole('button', { name: '提交', exact: true }).click()
   await expect(page.getByText('请选择请假性质', { exact: true })).toBeVisible()
@@ -151,9 +153,19 @@ test('existing local form validates and persists an approved record', async ({ p
   const records = page.getByRole('button', { name: /查看事假详情/ })
   await expect(records).toHaveCount(3)
   await expect(records.first()).toContainText('已通过')
+  const savedRecord = await page.evaluate(() => JSON.parse(localStorage.getItem('leave-web-local-records')!)[0])
+  expect(savedRecord.submittedAt).toBe('2026-11-03T15:42:17.000Z')
+  const submittedTime = savedRecord.auditSteps[0].time
+  const approvedTime = savedRecord.auditSteps[1].time
+  expect(submittedTime).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:17$/)
+  expect(approvedTime).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:17$/)
+  expect((Date.parse(approvedTime.replace(' ', 'T')) - Date.parse(submittedTime.replace(' ', 'T'))) / 1000).toBe(5400)
   await page.reload()
   await expect(records).toHaveCount(3)
   await records.first().click()
+  await expect(page.locator('.mint-step__time-text')).toHaveText([submittedTime, approvedTime])
+  await page.reload()
+  await expect(page.locator('.mint-step__time-text')).toHaveText([submittedTime, approvedTime])
   await expect(page.getByText('本地网页功能测试', { exact: true })).toBeVisible()
   await expect(page.getByText('本地测试地址', { exact: true })).toBeVisible()
   await expect(page.getByText('湖南省/株洲市/醴陵市', { exact: true })).toBeVisible()

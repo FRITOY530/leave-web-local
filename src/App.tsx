@@ -225,7 +225,7 @@ function dateOnly(value: string) {
   return value ? value.slice(0, 10) : '未设置'
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(value: string, showSeconds = false) {
   if (!value) return '未设置'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
@@ -235,6 +235,7 @@ function formatDateTime(value: string) {
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
+    ...(showSeconds ? { second: '2-digit' as const } : {}),
     hour12: false,
   }).replaceAll('/', '-')
 }
@@ -387,7 +388,9 @@ function App() {
     event.preventDefault()
     if (!validate()) return
     const id = crypto.randomUUID()
-    const submittedAt = new Date().toISOString().slice(0, 16)
+    const submittedAt = new Date().toISOString()
+    const approvalDelaySeconds = 3600 + Math.floor(Math.random() * 3601)
+    const approvedAt = new Date(Date.parse(submittedAt) + approvalDelaySeconds * 1000).toISOString()
     const record: LeaveRecord = {
       id,
       applicationNumber: createApplicationNumber(),
@@ -414,8 +417,8 @@ function App() {
       parentAttachmentSize: form.parentProofName ? '本地文件' : '',
       parentAttachmentDataUrl: form.parentProofDataUrl,
       auditSteps: [
-        { time: formatDateTime(submittedAt), title: '提交申请' },
-        { time: formatDateTime(submittedAt), title: '辅导员审核', result: '通过', reviewer: COUNSELOR_REVIEWER, opinion: '同意' },
+        { time: formatDateTime(submittedAt, true), title: '提交申请' },
+        { time: formatDateTime(approvedAt, true), title: '辅导员审核', result: '通过', reviewer: COUNSELOR_REVIEWER, opinion: '同意' },
         { title: '院系审核' },
         { title: '学校审核' },
         { title: '校领导审核' },
